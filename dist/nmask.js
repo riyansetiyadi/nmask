@@ -1,8 +1,3 @@
-/*!
- * nmask v1.1.0
- * Lightweight jQuery plugin for numeric input formatting
- * Modified to handle live oninput evaluation properly
- */
 (function ($) {
   $.fn.nmask = function (optionsOrMethod) {
     const defaultSettings = {
