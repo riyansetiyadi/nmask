@@ -1,0 +1,13 @@
+{
+  "name": "nmask",
+  "version": "1.0.0",
+  "description": "A lightweight jQuery plugin for masking numeric inputs with separators and prefix options.",
+  "main": "dist/nmask.js",
+  "keywords": ["mask", "number", "jquery", "formatter", "input", "currency"],
+  "author": "Riyan",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/riyansetiyadi/nmask.git"
+  }
+}
