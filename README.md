@@ -111,6 +111,6 @@ This plugin is free to use, modify, and distribute — even for commercial proje
 
 ## 🌐 Repository
 
-**GitHub:** [https://github.com/yourusername/nmask](https://github.com/riyansetiyadi/nmask)
+**GitHub:** [https://github.com/riyansetiyadi/nmask](https://github.com/riyansetiyadi/nmask)
 **CDN:** [https://cdn.jsdelivr.net/npm/nmask](https://cdn.jsdelivr.net/npm/nmask)
 **NPM:** [https://www.npmjs.com/package/nmask](https://www.npmjs.com/package/nmask)
