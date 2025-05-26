@@ -101,6 +101,53 @@ $('.currency-input').nmask({
 
 ---
 
+## 🔄 Sync with Dynamic JavaScript Updates
+
+If you update the original input value programmatically using JavaScript (e.g., with jQuery `.val()`), you **must trigger the `change` event** so that **nmask updates the visual input accordingly**.
+
+### ✅ Example (jQuery)
+
+```javascript
+// Update value and trigger nmask to sync
+$('#myInput').val(15000).trigger('change');
+```
+
+Without `.trigger('change')`, the visual masked input will not update because JavaScript does not automatically fire events when changing values programmatically.
+
+---
+
+### ⚠️ Why This Is Required
+
+Setting a value with `.val()` or `.value` does **not trigger `input` or `change` events automatically**. Since `nmask` relies on these events to keep the masked display in sync with the real value, you need to trigger them manually.
+
+---
+
+### 📌 Summary
+
+| Action                         | Manual Trigger Required |
+| ------------------------------ | ----------------------- |
+| User types a number            | ❌ No                    |
+| JavaScript updates input value | ✅ `.trigger('change')`  |
+
+---
+
+## ❌ Destroy
+
+To remove the plugin behavior and restore the original input:
+
+```javascript
+$('input[name="harga"]').nmask('destroy');
+```
+
+This will:
+
+* Remove the cloned (visual) input element.
+* Restore the visibility of the original input.
+* Detach all `nmask`-related event listeners.
+* Stop any internal observer watching for changes.
+
+---
+
 ## 🪪 License
 
 **MIT License** © 2025 \ Riyan
@@ -111,6 +158,6 @@ This plugin is free to use, modify, and distribute — even for commercial proje
 
 ## 🌐 Repository
 
-**GitHub:** [https://github.com/riyansetiyadi/nmask](https://github.com/riyansetiyadi/nmask)
-**CDN:** [https://cdn.jsdelivr.net/npm/nmask](https://cdn.jsdelivr.net/npm/nmask)
-**NPM:** [https://www.npmjs.com/package/nmask](https://www.npmjs.com/package/nmask)
+**GitHub:** [https://github.com/riyansetiyadi/nmask](https://github.com/riyansetiyadi/nmask) <br>
+**CDN:** [https://cdn.jsdelivr.net/npm/nmask](https://cdn.jsdelivr.net/npm/nmask) <br>
+**NPM:** [https://www.npmjs.com/package/nmask](https://www.npmjs.com/package/nmask) 

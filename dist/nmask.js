@@ -1,90 +1,175 @@
 /*!
- * nmask v1.0.0
+ * nmask v1.1.0
  * Lightweight jQuery plugin for numeric input formatting
- * https://github.com/riyansetiyadi/nmask
- * Licensed under MIT
+ * Modified to handle live oninput evaluation properly
  */
-(function($) {
-  $.fn.nmask = function(options) {
-    const settings = $.extend({
-      thousandsSeparator: '.',
-      decimalSeparator: ',',
+(function ($) {
+  $.fn.nmask = function (optionsOrMethod) {
+    const defaultSettings = {
+      thousandsSeparator: ".",
+      decimalSeparator: ",",
       decimalDigits: 0,
-      prefix: '',
-      allowNegative: false
-    }, options);
+      prefix: "",
+      allowNegative: false,
+    };
 
-    function formatNumber(raw) {
-      if (!raw) return '';
-      let negative = false;
-      if (raw[0] === '-') {
-        negative = true;
-        raw = raw.slice(1);
-      }
+    const escapeRegExp = (string) => {
+      return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    };
 
-      let [intPart, decPart] = raw.split('.');
-      intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, settings.thousandsSeparator);
+    if (optionsOrMethod === "destroy") {
+      return this.each(function () {
+        const $original = $(this);
+        const $visual = $("#" + $original.attr("id") + "_visual");
+        if ($visual.length) {
+          $visual.off(".nmask").remove();
+          $original.off(".nmask").show();
+        }
+      });
+    }
 
-      let result = intPart;
+    const settings = $.extend({}, defaultSettings, optionsOrMethod);
+
+    const formatNumber = (value) => {
+      if (!value || isNaN(value)) return "";
+      let num = value.toString().replace(/[^0-9\-\.]/g, "");
+      let isNegative = value.toString().startsWith("-");
+      if (isNegative) num = num.substring(1);
+
+      let [intPart, decPart] = num.split(".");
+      intPart = intPart.replace(/^0+(?=\d)/, ""); // remove leading zeros
+      intPart = intPart.replace(
+        /\B(?=(\d{3})+(?!\d))/g,
+        settings.thousandsSeparator
+      );
+
       if (settings.decimalDigits > 0) {
-        decPart = (decPart || '').padEnd(settings.decimalDigits, '0').slice(0, settings.decimalDigits);
-        result += settings.decimalSeparator + decPart;
+        decPart = (decPart || "")
+          .padEnd(settings.decimalDigits, "0")
+          .slice(0, settings.decimalDigits);
+        return (
+          (isNegative ? "-" : "") +
+          settings.prefix +
+          intPart +
+          settings.decimalSeparator +
+          decPart
+        );
+      } else {
+        return (isNegative ? "-" : "") + settings.prefix + intPart;
       }
+    };
 
-      if (negative) result = '-' + result;
-      return settings.prefix + result;
-    }
+    const cleanNumber = (val) => {
+      if (settings.prefix) {
+        val = val.replace(new RegExp(escapeRegExp(settings.prefix), "g"), "");
+      }
+      if (settings.thousandsSeparator) {
+        val = val.replace(
+          new RegExp(escapeRegExp(settings.thousandsSeparator), "g"),
+          ""
+        );
+      }
+      val = val.replace(
+        new RegExp(
+          `[^0-9${settings.allowNegative ? "\\-" : ""}${
+            settings.decimalSeparator === "."
+              ? ""
+              : escapeRegExp(settings.decimalSeparator)
+          }]`,
+          "g"
+        ),
+        ""
+      );
+      if (settings.decimalSeparator && settings.decimalSeparator !== ".") {
+        val = val.replace(settings.decimalSeparator, ".");
+      }
+      return val;
+    };
 
-    function cleanNumber(val) {
-      const regex = new RegExp(`[^0-9${settings.decimalSeparator}${settings.allowNegative ? '-' : ''}]`, 'g');
-      let cleaned = val.replace(regex, '')
-                       .replace(settings.decimalSeparator, '.');
-      return cleaned;
-    }
-
-    return this.each(function() {
+    return this.each(function () {
       const $original = $(this);
-      const originalId = $original.attr('id') || 'input_' + Math.floor(Math.random() * 100000);
-      $original.attr('id', originalId);
+      const originalId =
+        $original.attr("id") || "nmask_" + Math.floor(Math.random() * 10000);
+      const existing = $("#" + originalId + "_visual");
 
-      const $visual = $('<input>', {
-        type: 'text',
-        id: originalId + '_visual',
-        class: 'nmask-visual',
-        placeholder: $original.attr('placeholder') || '',
+      if (existing.length) return; // prevent double init
+
+      $original.attr("id", originalId).hide();
+
+      const $visual = $('<input type="text" autocomplete="off">')
+        .addClass($original.attr("class") || "")
+        .attr("id", originalId + "_visual")
+        .attr("placeholder", $original.attr("placeholder") || "");
+
+      // Clone essential props like readonly, disabled, required, style
+      ["readonly", "disabled", "required", "style"].forEach((prop) => {
+        if ($original.prop(prop)) $visual.prop(prop, $original.prop(prop));
       });
 
-      $original.after($visual).hide();
+      $original.after($visual);
+      $visual.val(formatNumber($original.val()));
 
-      const rawInitial = $original.val();
-      if (rawInitial) {
-        $visual.val(formatNumber(rawInitial));
+      // Prepare inline oninput function if exists
+      const inlineOnInput = $original.attr("oninput");
+      let onInputFn = null;
+      if (inlineOnInput) {
+        onInputFn = new Function("event", inlineOnInput);
       }
 
-      $visual.on('input', function () {
-        const raw = cleanNumber($(this).val());
+      $visual.on("input.nmask", function (e) {
+        let val = $(this).val();
+        let cleanVal = cleanNumber(val);
 
-        if (raw) {
-          const parts = raw.split('.');
-          const intPart = parts[0].replace(/^(-)?0+(?=\d)/, '$1');
-          let decPart = parts[1] || '';
+        if (cleanVal) {
+          let parts = cleanVal.split(".");
+          let intPart = parts[0].replace(/^(-)?0+(?=\d)/, "$1");
+          let decPart = parts[1] || "";
+
           if (settings.decimalDigits > 0) {
             decPart = decPart.slice(0, settings.decimalDigits);
-            $original.val(intPart + '.' + decPart);
+            $original.val(intPart + "." + decPart);
           } else {
             $original.val(intPart);
           }
 
+          // Call inline oninput function directly for live update
+          if (onInputFn) {
+            onInputFn.call($original[0], e.originalEvent);
+          } else {
+            $original.trigger("input");
+          }
+
           $(this).val(formatNumber($original.val()));
         } else {
-          $original.val('');
-          $(this).val('');
+          $original.val("");
+          $visual.val("");
+          if (onInputFn) {
+            onInputFn.call($original[0], e.originalEvent);
+          } else {
+            $original.trigger("input");
+          }
         }
+
+        $original.trigger("change");
       });
 
-      $original.closest('form').on('submit', function () {
-        const raw = cleanNumber($visual.val());
-        $original.val(raw || '');
+      // Sync visual if original input changed programmatically
+      const syncFromOriginal = () => {
+        const val = $original.val();
+        $visual.val(formatNumber(val));
+      };
+
+      $original.on("input.nmask change.nmask", syncFromOriginal);
+
+      const observer = new MutationObserver(syncFromOriginal);
+      observer.observe($original[0], {
+        attributes: true,
+        attributeFilter: ["value"],
+      });
+
+      // On form submit, set original val to clean number without formatting
+      $original.closest("form").on("submit.nmask", function () {
+        $original.val(cleanNumber($visual.val()));
       });
     });
   };
