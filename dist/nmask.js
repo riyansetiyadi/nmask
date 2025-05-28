@@ -101,7 +101,15 @@
         if ($original.prop(prop)) $visual.prop(prop, $original.prop(prop));
       });
 
-      $original.after($visual);
+      if ($original.parent().hasClass("input-group")) {
+        // Letakkan visual input sebagai elemen pertama
+        $original.parent().prepend($visual);
+
+        // Pindahkan original input ke luar input-group dan tetap hidden
+        $original.insertAfter($original.parent()).hide();
+      } else {
+        $original.after($visual).hide();
+      }
       $visual.val(formatNumber($original.val()));
 
       // Prepare inline oninput function if exists
