@@ -1,6 +1,6 @@
 {
   "name": "nmask",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "A lightweight jQuery plugin for masking numeric inputs with separators and prefix options.",
   "main": "dist/nmask.js",
   "keywords": [

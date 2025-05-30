@@ -39,15 +39,15 @@
       );
 
       if (settings.decimalDigits > 0) {
-        decPart = (decPart || "")
-          .padEnd(settings.decimalDigits, "0")
-          .slice(0, settings.decimalDigits);
+        // hanya potong, tanpa padEnd
+        decPart = (decPart || "").slice(0, settings.decimalDigits);
+
+        // Hanya tampilkan decimalSeparator jika decPart tidak kosong
+        let decimalString =
+          decPart.length > 0 ? settings.decimalSeparator + decPart : "";
+
         return (
-          (isNegative ? "-" : "") +
-          settings.prefix +
-          intPart +
-          settings.decimalSeparator +
-          decPart
+          (isNegative ? "-" : "") + settings.prefix + intPart + decimalString
         );
       } else {
         return (isNegative ? "-" : "") + settings.prefix + intPart;
@@ -130,19 +130,40 @@
 
           if (settings.decimalDigits > 0) {
             decPart = decPart.slice(0, settings.decimalDigits);
-            $original.val(intPart + "." + decPart);
+
+            // Untuk simpan ke original input: jika decPart kosong, hilangkan titik
+            let originalVal =
+              decPart.length > 0 ? intPart + "." + decPart : intPart;
+
+            $original.val(originalVal);
+
+            // Untuk visual input: tetap tampilkan apa user ketik, tapi jangan buat error di formatNumber
+            // Kita hanya format ulang jika ada angka desimal atau intPart saja
+            // Jadi jika input user '1.' tetap tampil '1.' di visual
+            // Format ulang hanya jika val sudah valid number atau ada decimal
+            let visualVal;
+            if (
+              val.endsWith(settings.decimalSeparator) &&
+              decPart.length === 0
+            ) {
+              // User baru ketik titik desimal, tampilkan apa adanya
+              visualVal = val;
+            } else {
+              visualVal = formatNumber(originalVal);
+            }
+
+            $(this).val(visualVal);
           } else {
+            // tanpa decimal digits
             $original.val(intPart);
+            $(this).val(formatNumber(intPart));
           }
 
-          // Call inline oninput function directly for live update
           if (onInputFn) {
             onInputFn.call($original[0], e.originalEvent);
           } else {
             $original.trigger("input");
           }
-
-          $(this).val(formatNumber($original.val()));
         } else {
           $original.val("");
           $visual.val("");
@@ -158,8 +179,18 @@
 
       // Sync visual if original input changed programmatically
       const syncFromOriginal = () => {
-        const val = $original.val();
-        $visual.val(formatNumber(val));
+        const originalVal = $original.val();
+        const visualVal = $visual.val();
+
+        // Cek apakah visual input diakhiri dengan separator desimal dan belum ada angka setelahnya
+        const endsWithDecimalOnly =
+          settings.decimalDigits > 0 &&
+          visualVal &&
+          visualVal.endsWith(settings.decimalSeparator);
+
+        if (!endsWithDecimalOnly) {
+          $visual.val(formatNumber(originalVal));
+        }
       };
 
       $original.on("input.nmask change.nmask", syncFromOriginal);
