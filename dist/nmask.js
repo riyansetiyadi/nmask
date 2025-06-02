@@ -89,7 +89,7 @@
 
       if (existing.length) return; // prevent double init
 
-      $original.attr("id", originalId).hide();
+      $original.attr("id", originalId);
 
       const $visual = $('<input type="text" autocomplete="off">')
         .addClass($original.attr("class") || "")
@@ -101,14 +101,26 @@
         if ($original.prop(prop)) $visual.prop(prop, $original.prop(prop));
       });
 
+      //   Selalu set opacity 0 pada original input
+      $original.css({
+        opacity: 0,
+        width: 0,
+        height: 0,
+        border: "none",
+        padding: 0,
+        margin: 0,
+      });
+      // Tambahkan tabindex -1 agar tidak bisa di-tab
+      $original.attr("tabindex", -1);
+
       if ($original.parent().hasClass("input-group")) {
         // Letakkan visual input sebagai elemen pertama
         $original.parent().prepend($visual);
 
-        // Pindahkan original input ke luar input-group dan tetap hidden
-        $original.insertAfter($original.parent()).hide();
+        // Pindahkan original input ke luar input-group
+        $original.insertAfter($original.parent());
       } else {
-        $original.after($visual).hide();
+        $original.after($visual);
       }
       $visual.val(formatNumber($original.val()));
 
@@ -118,6 +130,9 @@
       if (inlineOnInput) {
         onInputFn = new Function("event", inlineOnInput);
       }
+
+      // Set step="any" pada original input
+      $original.attr("step", "any");
 
       $visual.on("input.nmask", function (e) {
         let val = $(this).val();
