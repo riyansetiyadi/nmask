@@ -114,8 +114,8 @@
       $original.attr("tabindex", -1);
 
       if ($original.parent().hasClass("input-group")) {
-        // Letakkan visual input sebagai elemen pertama
-        $original.parent().prepend($visual);
+        // Letakkan visual
+        $visual.insertAfter($original);
 
         // Pindahkan original input ke luar input-group
         $original.insertAfter($original.parent());
