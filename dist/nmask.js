@@ -109,6 +109,8 @@
         border: "none",
         padding: 0,
         margin: 0,
+        minWidth: 0,
+        minHeight: 0,
       });
       // Tambahkan tabindex -1 agar tidak bisa di-tab
       $original.attr("tabindex", -1);
