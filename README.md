@@ -1,7 +1,10 @@
 # nmask
 
-`nmask` is a lightweight jQuery plugin to format number inputs with thousands separators, decimal formatting, and optional prefixes (like currency symbols).  
-**While users see a nicely formatted input, the real value stored remains a clean number, so backend systems like PHP can easily process it.**
+`nmask` is a lightweight jQuery plugin for **universal number formatting** that works with both input elements and display elements. Format numbers with thousands separators, decimal formatting, and optional prefixes (like currency symbols).  
+
+**✨ Latest**: Now supports formatting numbers in **any HTML element** (`<div>`, `<span>`, etc.) while maintaining full backward compatibility!
+
+**Key benefit**: While users see nicely formatted numbers, the real values remain clean numbers that backend systems can easily process.
 
 ---
 
@@ -24,18 +27,14 @@ npm install nmask
 
 ## ✨ Usage
 
-### HTML
+### 🎯 Input Elements (Original Functionality)
 
 ```html
 <form method="POST">
   <input type="number" id="price" name="price" value="1500000" />
   <button type="submit">Save</button>
 </form>
-```
 
-### JavaScript
-
-```html
 <script>
   $('#price').nmask({
     thousandsSeparator: '.',
@@ -43,6 +42,33 @@ npm install nmask
     decimalDigits: 0,
     prefix: 'Rp '
   });
+</script>
+```
+
+### Display Elements (New Feature)
+
+```html
+<!-- Format numbers in display elements -->
+<div class="total-display" data-name="formatted_total">1500000</div>
+<span class="price-tag">2500.50</span>
+
+<script>
+  // Format display elements
+  $('.total-display').nmask({
+    thousandsSeparator: '.',
+    prefix: 'Rp '
+  });
+  
+  $('.price-tag').nmask({
+    thousandsSeparator: ',',
+    decimalSeparator: '.',
+    decimalDigits: 2,
+    prefix: '$'
+  });
+  
+  // Use .val() on any masked element!
+  $('.total-display').val(3000000); // Updates display AND hidden form field
+  $('.price-tag').val(1299.99);
 </script>
 ```
 
@@ -62,95 +88,184 @@ npm install nmask
 
 ## 🧠 How It Works
 
+### For Input Elements:
 * The original `<input type="number">` is **hidden**, but keeps its `name` and raw numeric value
 * A new visible `<input type="text">` is created for formatted interaction
 * User input is masked visually while the numeric value is synced back to the hidden input
-* On form submission, your backend (PHP, Node.js, etc.) receives the **clean numeric value**
+* On form submission, your backend receives the **clean numeric value**
+
+### For Display Elements:
+* The element displays the **formatted number** (e.g., "Rp 1.500.000")
+* A **hidden input** is automatically created for form submission
+* Use `data-name` attribute to specify the field name, or one will be auto-generated
+* Use `.val()` to get/set the raw numeric value programmatically
 
 ---
 
 ## 🔍 Example Output
 
-| Visual Input   | Real Value              |
-| -------------- | ----------------------- |
-| `Rp 1.500.000` | `1500000`               |
-| `-1.234,50`    | `-1234.50` (if allowed) |
+### Input Elements
+| Visual Input   | Real Value              | Submitted Value |
+| -------------- | ----------------------- | --------------- |
+| `Rp 1.500.000` | `1500000`               | `1500000`       |
+| `-1.234,50`    | `-1234.50` (if allowed) | `-1234.50`      |
+
+### Display Elements
+| Display Text   | `.val()` Returns | Hidden Input Value |
+| -------------- | ---------------- | ------------------ |
+| `Rp 1.500.000` | `1500000`        | `1500000`          |
+| `$1,234.50`    | `1234.50`        | `1234.50`          |
 
 ---
 
-## ⚠️ Notes
+## Universal .val() Support
 
-* Only the original `number` input is submitted
-* Plugin works with any existing or dynamically generated field
-* Easy integration with frameworks that rely on pure numeric input (e.g. Laravel, Express, Django)
+nmask overrides jQuery's `.val()` method to work seamlessly with both input and display elements:
+
+```javascript
+// Works on inputs (existing behavior)
+$('#price-input').val(15000);
+console.log($('#price-input').val()); // "15000"
+
+// Now works on display elements too!
+$('.price-display').val(25000);
+console.log($('.price-display').val()); // "25000"
+console.log($('.price-display').text()); // "Rp 25.000" (formatted display)
+```
 
 ---
 
-## 🔄 Customization
+## 🔄 Form Integration
 
-Need more control? You can call `.nmask()` on multiple inputs with different settings:
+### Input Elements
+```html
+<form method="POST">
+  <input type="number" name="price" id="price" />
+</form>
+<!-- Submits: price=1500000 -->
+```
 
-```js
+### Display Elements
+```html
+<form method="POST">
+  <div class="total" data-name="total_amount">1500000</div>
+</form>
+<!-- Auto-creates: <input type="hidden" name="total_amount" value="1500000"> -->
+```
+
+---
+
+## 🔄 Dynamic Updates & Synchronization
+
+### Recommended Approach
+```javascript
+// Universal - works for both input and display elements
+$('#myInput').val(15000);        // Automatically syncs
+$('.myDisplay').val(25000);      // Automatically syncs
+```
+
+### Legacy Approach
+```javascript
+// Still works, but .val() method above is preferred
+$('#myInput').val(15000).trigger('change');
+```
+
+---
+
+## 🔄 Multiple Element Formatting
+
+```javascript
+// Format all currency inputs
 $('.currency-input').nmask({
   prefix: '$ ',
   thousandsSeparator: ',',
   decimalSeparator: '.',
   decimalDigits: 2
 });
+
+// Format display elements
+$('.price-display').nmask({
+  prefix: 'Rp ',
+  thousandsSeparator: '.',
+  decimalDigits: 0
+});
+
+// Mix and match
+$('.financial-number').nmask({
+  thousandsSeparator: ',',
+  decimalDigits: 2,
+  allowNegative: true
+});
 ```
 
 ---
 
-## 🔄 Sync with Dynamic JavaScript Updates
+## 🎯 Use Cases
 
-If you update the original input value programmatically using JavaScript (e.g., with jQuery `.val()`), you **must trigger the `change` event** so that **nmask updates the visual input accordingly**.
+### Traditional (Input Elements)
+- ✅ Form inputs for prices, quantities, amounts
+- ✅ User data entry with validation
+- ✅ E-commerce checkout forms
 
-### ✅ Example (jQuery)
-
-```javascript
-// Update value and trigger nmask to sync
-$('#myInput').val(15000).trigger('change');
-```
-
-Without `.trigger('change')`, the visual masked input will not update because JavaScript does not automatically fire events when changing values programmatically.
-
----
-
-### ⚠️ Why This Is Required
-
-Setting a value with `.val()` or `.value` does **not trigger `input` or `change` events automatically**. Since `nmask` relies on these events to keep the masked display in sync with the real value, you need to trigger them manually.
-
----
-
-### 📌 Summary
-
-| Action                         | Manual Trigger Required |
-| ------------------------------ | ----------------------- |
-| User types a number            | ❌ No                    |
-| JavaScript updates input value | ✅ `.trigger('change')`  |
+### Display Elements (New Feature)
+- ✅ Dashboard number displays
+- ✅ Report summaries and totals  
+- ✅ Real-time calculated values
+- ✅ Read-only formatted numbers that still submit to forms
+- ✅ Interactive displays that can be updated via JavaScript
 
 ---
 
 ## ❌ Destroy
 
-To remove the plugin behavior and restore the original input:
+Remove the plugin behavior and restore original state:
 
 ```javascript
-$('input[name="harga"]').nmask('destroy');
+// For input elements
+$('input[name="price"]').nmask('destroy');
+
+// For display elements  
+$('.price-display').nmask('destroy');
 ```
 
 This will:
+* Remove visual/hidden input elements
+* Restore original element visibility and styling
+* Clean up all event listeners and data attributes
+* Stop internal observers
 
-* Remove the cloned (visual) input element.
-* Restore the visibility of the original input.
-* Detach all `nmask`-related event listeners.
-* Stop any internal observer watching for changes.
+---
+
+## Migration & Compatibility
+
+**✅ Fully backward compatible!** All existing code continues to work unchanged.
+
+### Latest Features:
+- ✨ Support for non-input elements (`<div>`, `<span>`, etc.)
+- ✨ Universal `.val()` method override
+- ✨ Automatic hidden input creation for forms
+- ✨ `data-name` attribute support
+- 🔧 Improved element tracking and cleanup
+- 🔧 Enhanced destroy method
+
+### Breaking Changes:
+**None!** Complete backward compatibility maintained.
+
+---
+
+## ⚠️ Notes
+
+* For input elements: Only the original numeric input is submitted
+* For display elements: Hidden input with clean numeric value is submitted  
+* Plugin works with existing and dynamically generated elements
+* Easy integration with any backend framework (Laravel, Express, Django, etc.)
+* Supports Bootstrap input-group components
 
 ---
 
 ## 🪪 License
 
-**MIT License** © 2025 \ Riyan
+**MIT License** © 2025 Riyan Setiyadi
 
 This plugin is free to use, modify, and distribute — even for commercial projects — as long as the original license and credit remain intact. No warranties are provided; use at your own risk.
 
@@ -158,6 +273,6 @@ This plugin is free to use, modify, and distribute — even for commercial proje
 
 ## 🌐 Repository
 
-**GitHub:** [https://github.com/riyansetiyadi/nmask](https://github.com/riyansetiyadi/nmask) <br>
-**CDN:** [https://cdn.jsdelivr.net/npm/nmask](https://cdn.jsdelivr.net/npm/nmask) <br>
-**NPM:** [https://www.npmjs.com/package/nmask](https://www.npmjs.com/package/nmask) 
+**GitHub:** [https://github.com/riyansetiyadi/nmask](https://github.com/riyansetiyadi/nmask)  
+**CDN:** [https://cdn.jsdelivr.net/npm/nmask](https://cdn.jsdelivr.net/npm/nmask)  
+**NPM:** [https://www.npmjs.com/package/nmask](https://www.npmjs.com/package/nmask)

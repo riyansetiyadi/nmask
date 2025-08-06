@@ -1,4 +1,53 @@
 (function ($) {
+  // Store original jQuery val method
+  const originalVal = $.fn.val;
+  
+  // Override jQuery .val() method
+  $.fn.val = function(value) {
+    // If setting value
+    if (arguments.length > 0) {
+      return this.each(function() {
+        const $this = $(this);
+        
+        // Check if element has nmask data
+        if ($this.data('nmask-active')) {
+          if ($this.is('input')) {
+            // For input elements, use original behavior
+            originalVal.call($this, value);
+          } else {
+            // For non-input elements, use custom setValue method
+            const setValue = $this.data('nmask-setValue');
+            if (setValue) {
+              setValue(value);
+            }
+          }
+        } else {
+          // Use original jQuery val method
+          originalVal.call($this, value);
+        }
+      });
+    } 
+    // If getting value
+    else {
+      const $this = $(this.first());
+      
+      // Check if element has nmask data
+      if ($this.data('nmask-active')) {
+        if ($this.is('input')) {
+          // For input elements, use original behavior
+          return originalVal.call($this);
+        } else {
+          // For non-input elements, use custom getValue method
+          const getValue = $this.data('nmask-getValue');
+          return getValue ? getValue() : '';
+        }
+      } else {
+        // Use original jQuery val method
+        return originalVal.call($this);
+      }
+    }
+  };
+
   $.fn.nmask = function (optionsOrMethod) {
     const defaultSettings = {
       thousandsSeparator: ".",
@@ -15,10 +64,38 @@
     if (optionsOrMethod === "destroy") {
       return this.each(function () {
         const $original = $(this);
-        const $visual = $("#" + $original.attr("id") + "_visual");
-        if ($visual.length) {
+        
+        // Find visual input by data attribute instead of ID
+        const $visual = $original.data('nmask-visual');
+        const $hiddenInput = $original.data('nmask-hidden');
+        
+        // Remove nmask data
+        $original.removeData('nmask-active');
+        $original.removeData('nmask-setValue');
+        $original.removeData('nmask-getValue');
+        $original.removeData('nmask-visual');
+        $original.removeData('nmask-hidden');
+        
+        if ($visual && $visual.length) {
           $visual.off(".nmask").remove();
-          $original.off(".nmask").show();
+        }
+        if ($hiddenInput && $hiddenInput.length) {
+          $hiddenInput.off(".nmask").remove();
+        }
+        
+        $original.off(".nmask");
+        
+        if ($original.is('input')) {
+          $original.show().css({
+            opacity: '',
+            width: '',
+            height: '',
+            border: '',
+            padding: '',
+            margin: '',
+            minWidth: '',
+            minHeight: ''
+          });
         }
       });
     }
@@ -39,13 +116,9 @@
       );
 
       if (settings.decimalDigits > 0) {
-        // hanya potong, tanpa padEnd
         decPart = (decPart || "").slice(0, settings.decimalDigits);
-
-        // Hanya tampilkan decimalSeparator jika decPart tidak kosong
         let decimalString =
           decPart.length > 0 ? settings.decimalSeparator + decPart : "";
-
         return (
           (isNegative ? "-" : "") + settings.prefix + intPart + decimalString
         );
@@ -55,6 +128,7 @@
     };
 
     const cleanNumber = (val) => {
+      if (!val) return "";
       if (settings.prefix) {
         val = val.replace(new RegExp(escapeRegExp(settings.prefix), "g"), "");
       }
@@ -83,145 +157,169 @@
 
     return this.each(function () {
       const $original = $(this);
-      const originalId =
-        $original.attr("id") || "nmask_" + Math.floor(Math.random() * 10000);
-      const existing = $("#" + originalId + "_visual");
-
-      if (existing.length) return; // prevent double init
-
-      $original.attr("id", originalId);
-
-      const $visual = $('<input type="text" autocomplete="off">')
-        .addClass($original.attr("class") || "")
-        .attr("id", originalId + "_visual")
-        .attr("placeholder", $original.attr("placeholder") || "");
-
-      // Clone essential props like readonly, disabled, required, style
-      ["readonly", "disabled", "required", "style"].forEach((prop) => {
-        if ($original.prop(prop)) $visual.prop(prop, $original.prop(prop));
-      });
-
-      //   Selalu set opacity 0 pada original input
-      $original.css({
-        opacity: 0,
-        width: 0,
-        height: 0,
-        border: "none",
-        padding: 0,
-        margin: 0,
-        minWidth: 0,
-        minHeight: 0,
-      });
-      // Tambahkan tabindex -1 agar tidak bisa di-tab
-      $original.attr("tabindex", -1);
-
-      if ($original.parent().hasClass("input-group")) {
-        // Letakkan visual
-        $visual.insertAfter($original);
-
-        // Pindahkan original input ke luar input-group
-        $original.insertAfter($original.parent());
-      } else {
-        $original.after($visual);
-      }
-      $visual.val(formatNumber($original.val()));
-
-      // Prepare inline oninput function if exists
-      const inlineOnInput = $original.attr("oninput");
-      let onInputFn = null;
-      if (inlineOnInput) {
-        onInputFn = new Function("event", inlineOnInput);
+      const isInput = $original.is('input');
+      
+      // Check if already initialized by looking for nmask-active data
+      if ($original.data('nmask-active')) {
+        return; // Skip if already initialized
       }
 
-      // Set step="any" pada original input
-      $original.attr("step", "any");
+      // Mark element as having nmask active
+      $original.data('nmask-active', true);
 
-      $visual.on("input.nmask", function (e) {
-        let val = $(this).val();
-        let cleanVal = cleanNumber(val);
+      // For input elements (original behavior with visual input)
+      if (isInput) {
+        // Auto-generate ID only if needed for input-group functionality
+        let originalId = $original.attr("id");
+        if (!originalId && $original.parent().hasClass("input-group")) {
+          originalId = "nmask_" + Math.floor(Math.random() * 10000);
+          $original.attr("id", originalId);
+        }
 
-        if (cleanVal) {
-          let parts = cleanVal.split(".");
-          let intPart = parts[0].replace(/^(-)?0+(?=\d)/, "$1");
-          let decPart = parts[1] || "";
+        const $visual = $('<input type="text" autocomplete="off">')
+          .addClass($original.attr("class") || "");
 
-          if (settings.decimalDigits > 0) {
-            decPart = decPart.slice(0, settings.decimalDigits);
+        // Set ID for visual input only if original has ID
+        if (originalId) {
+          $visual.attr("id", originalId + "_visual");
+        }
 
-            // Untuk simpan ke original input: jika decPart kosong, hilangkan titik
-            let originalVal =
-              decPart.length > 0 ? intPart + "." + decPart : intPart;
+        if ($original.attr("placeholder")) {
+          $visual.attr("placeholder", $original.attr("placeholder"));
+        }
 
-            $original.val(originalVal);
+        ["readonly", "disabled", "required", "style"].forEach((prop) => {
+          if ($original.prop(prop)) $visual.prop(prop, $original.prop(prop));
+        });
 
-            // Untuk visual input: tetap tampilkan apa user ketik, tapi jangan buat error di formatNumber
-            // Kita hanya format ulang jika ada angka desimal atau intPart saja
-            // Jadi jika input user '1.' tetap tampil '1.' di visual
-            // Format ulang hanya jika val sudah valid number atau ada decimal
-            let visualVal;
-            if (
-              val.endsWith(settings.decimalSeparator) &&
-              decPart.length === 0
-            ) {
-              // User baru ketik titik desimal, tampilkan apa adanya
-              visualVal = val;
+        $original.css({
+          opacity: 0,
+          width: 0,
+          height: 0,
+          border: "none",
+          padding: 0,
+          margin: 0,
+          minWidth: 0,
+          minHeight: 0,
+        });
+        $original.attr("tabindex", -1);
+
+        if ($original.parent().hasClass("input-group")) {
+          $visual.insertAfter($original);
+          $original.insertAfter($original.parent());
+        } else {
+          $original.after($visual);
+        }
+
+        // Store reference to visual input in data
+        $original.data('nmask-visual', $visual);
+
+        $visual.val(formatNumber($original.val()));
+        $original.attr("step", "any");
+
+        $visual.on("input.nmask", function (e) {
+          let val = $(this).val();
+          let cleanVal = cleanNumber(val);
+
+          if (cleanVal) {
+            let parts = cleanVal.split(".");
+            let intPart = parts[0].replace(/^(-)?0+(?=\d)/, "$1");
+            let decPart = parts[1] || "";
+
+            if (settings.decimalDigits > 0) {
+              decPart = decPart.slice(0, settings.decimalDigits);
+              let originalVal = decPart.length > 0 ? intPart + "." + decPart : intPart;
+              $original.val(originalVal);
+
+              let visualVal;
+              if (val.endsWith(settings.decimalSeparator) && decPart.length === 0) {
+                visualVal = val;
+              } else {
+                visualVal = formatNumber(originalVal);
+              }
+              $(this).val(visualVal);
             } else {
-              visualVal = formatNumber(originalVal);
+              $original.val(intPart);
+              $(this).val(formatNumber(intPart));
             }
 
-            $(this).val(visualVal);
+            $original.trigger("input");
           } else {
-            // tanpa decimal digits
-            $original.val(intPart);
-            $(this).val(formatNumber(intPart));
-          }
-
-          if (onInputFn) {
-            onInputFn.call($original[0], e.originalEvent);
-          } else {
+            $original.val("");
+            $visual.val("");
             $original.trigger("input");
           }
-        } else {
-          $original.val("");
-          $visual.val("");
-          if (onInputFn) {
-            onInputFn.call($original[0], e.originalEvent);
-          } else {
-            $original.trigger("input");
+          $original.trigger("change");
+        });
+
+        const syncFromOriginal = () => {
+          const originalVal = $original.val();
+          const visualVal = $visual.val();
+          const endsWithDecimalOnly =
+            settings.decimalDigits > 0 &&
+            visualVal &&
+            visualVal.endsWith(settings.decimalSeparator);
+
+          if (!endsWithDecimalOnly) {
+            $visual.val(formatNumber(originalVal));
           }
-        }
+        };
 
-        $original.trigger("change");
-      });
+        $original.on("input.nmask change.nmask", syncFromOriginal);
+      } 
+      // For non-input elements (display only - no ID required)
+      else {
+        // Create hidden input WITHOUT requiring ID
+        const $hiddenInput = $('<input type="hidden">');
 
-      // Sync visual if original input changed programmatically
-      const syncFromOriginal = () => {
-        const originalVal = $original.val();
-        const visualVal = $visual.val();
+        // Set name attribute from data-name or generate unique name
+        const nameAttr = $original.attr("data-name") || 
+                        $original.attr("name") || 
+                        "nmask_field_" + Math.floor(Math.random() * 10000);
+        $hiddenInput.attr("name", nameAttr);
 
-        // Cek apakah visual input diakhiri dengan separator desimal dan belum ada angka setelahnya
-        const endsWithDecimalOnly =
-          settings.decimalDigits > 0 &&
-          visualVal &&
-          visualVal.endsWith(settings.decimalSeparator);
+        $original.after($hiddenInput);
 
-        if (!endsWithDecimalOnly) {
-          $visual.val(formatNumber(originalVal));
-        }
-      };
+        // Store reference to hidden input in data
+        $original.data('nmask-hidden', $hiddenInput);
 
-      $original.on("input.nmask change.nmask", syncFromOriginal);
+        // Set initial value from element's text, data-value, or empty
+        const initialValue = $original.text() || $original.attr("data-value") || "";
+        const cleanInitial = cleanNumber(initialValue);
+        $hiddenInput.val(cleanInitial);
+        $original.text(formatNumber(cleanInitial));
 
-      const observer = new MutationObserver(syncFromOriginal);
-      observer.observe($original[0], {
-        attributes: true,
-        attributeFilter: ["value"],
-      });
+        // Create setValue and getValue methods for .val() override
+        const setValue = function(value) {
+          const cleanVal = cleanNumber(value.toString());
+          $hiddenInput.val(cleanVal);
+          $original.text(formatNumber(cleanVal));
+          $original.trigger("change");
+          $original.trigger("nmask:change", [cleanVal]);
+        };
 
-      // On form submit, set original val to clean number without formatting
-      $original.closest("form").on("submit.nmask", function () {
-        $original.val(cleanNumber($visual.val()));
-      });
+        const getValue = function() {
+          return $hiddenInput.val();
+        };
+
+        // Store methods in jQuery data for .val() override
+        $original.data('nmask-setValue', setValue);
+        $original.data('nmask-getValue', getValue);
+      }
+
+      // Form submit handler
+      const form = $original.closest("form");
+      if (form.length) {
+        form.off("submit.nmask").on("submit.nmask", function () {
+          if (isInput) {
+            const $visual = $original.data('nmask-visual');
+            if ($visual && $visual.length) {
+              $original.val(cleanNumber($visual.val()));
+            }
+          }
+          // For non-input elements, hidden input already contains clean value
+        });
+      }
     });
   };
 })(jQuery);
