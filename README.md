@@ -72,6 +72,18 @@ npm install nmask
 </script>
 ```
 
+### Multiple Elements with Same Setup
+
+```javascript
+// Apply same formatting to multiple elements
+$('.total-display, .credit, .debit').nmask({
+  prefix: 'Rp ',
+  thousandsSeparator: '.',
+  decimalSeparator: ',',
+  decimalDigits: 0
+});
+```
+
 ---
 
 ## ⚙️ Configuration Options

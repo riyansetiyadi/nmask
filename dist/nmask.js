@@ -192,6 +192,11 @@
           if ($original.prop(prop)) $visual.prop(prop, $original.prop(prop));
         });
 
+        // Copy all data-* attributes from original to visual input
+        $.each($original.data(), function(key, value) {
+          $visual.data(key, value);
+        });
+
         $original.css({
           opacity: 0,
           width: 0,
