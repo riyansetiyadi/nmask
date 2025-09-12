@@ -1,22 +1,22 @@
 (function ($) {
   // Store original jQuery val method
   const originalVal = $.fn.val;
-  
+
   // Override jQuery .val() method
-  $.fn.val = function(value) {
+  $.fn.val = function (value) {
     // If setting value
     if (arguments.length > 0) {
-      return this.each(function() {
+      return this.each(function () {
         const $this = $(this);
-        
+
         // Check if element has nmask data
-        if ($this.data('nmask-active')) {
-          if ($this.is('input')) {
+        if ($this.data("nmask-active")) {
+          if ($this.is("input")) {
             // For input elements, use original behavior
             originalVal.call($this, value);
           } else {
             // For non-input elements, use custom setValue method
-            const setValue = $this.data('nmask-setValue');
+            const setValue = $this.data("nmask-setValue");
             if (setValue) {
               setValue(value);
             }
@@ -26,20 +26,56 @@
           originalVal.call($this, value);
         }
       });
-    } 
+    }
     // If getting value
     else {
-      const $this = $(this.first());
-      
+      // Prefer the original element that has nmask active when a selection
+      // contains both the visual and the original input. This prevents
+      // returning the formatted visual value (with thousands separators).
+      let $first = $(this.first());
+
+      // If first element is not the nmask-bound original and the set
+      // contains more than one element, try to find the original or
+      // the hidden input that stores the clean value. Prefer elements
+      // with data('nmask-active') first, then elements marked with
+      // data('nmask-hidden') (the hidden input wrapper for non-inputs).
+      if (this.length > 1) {
+        // Prefer explicit original marker first
+        const $originalMarked = this.filter(function () {
+          return $(this).data && $(this).data("nmask-original");
+        }).first();
+        if ($originalMarked && $originalMarked.length) {
+          $first = $originalMarked;
+        } else {
+          const $active = this.filter(function () {
+            return $(this).data && $(this).data("nmask-active");
+          }).first();
+          if ($active && $active.length) {
+            $first = $active;
+          } else {
+            const $hidden = this.filter(function () {
+              return $(this).data && $(this).data("nmask-hidden");
+            }).first();
+            if ($hidden && $hidden.length) {
+              $first = $hidden;
+            }
+          }
+        }
+      }
+
+      const $this = $first;
+
       // Check if element has nmask data
-      if ($this.data('nmask-active')) {
-        if ($this.is('input')) {
-          // For input elements, use original behavior
+      if ($this.data("nmask-active")) {
+        if ($this.is("input")) {
+          // For input elements, return the underlying/original input value
+          // (which the plugin keeps as the clean numeric value) instead of
+          // the visual formatted input.
           return originalVal.call($this);
         } else {
           // For non-input elements, use custom getValue method
-          const getValue = $this.data('nmask-getValue');
-          return getValue ? getValue() : '';
+          const getValue = $this.data("nmask-getValue");
+          return getValue ? getValue() : "";
         }
       } else {
         // Use original jQuery val method
@@ -64,37 +100,42 @@
     if (optionsOrMethod === "destroy") {
       return this.each(function () {
         const $original = $(this);
-        
+
         // Find visual input by data attribute instead of ID
-        const $visual = $original.data('nmask-visual');
-        const $hiddenInput = $original.data('nmask-hidden');
-        
+        const $visual = $original.data("nmask-visual");
+        const $hiddenInput = $original.data("nmask-hidden");
+
         // Remove nmask data
-        $original.removeData('nmask-active');
-        $original.removeData('nmask-setValue');
-        $original.removeData('nmask-getValue');
-        $original.removeData('nmask-visual');
-        $original.removeData('nmask-hidden');
-        
+        $original.removeData("nmask-active");
+        $original.removeData("nmask-setValue");
+        $original.removeData("nmask-getValue");
+        $original.removeData("nmask-visual");
+        $original.removeData("nmask-hidden");
+        // Remove marker we added for original/source
+        $original.removeData("nmask-original");
+        try {
+          $original.removeAttr && $original.removeAttr("data-nmask-original");
+        } catch (e) {}
+
         if ($visual && $visual.length) {
           $visual.off(".nmask").remove();
         }
         if ($hiddenInput && $hiddenInput.length) {
           $hiddenInput.off(".nmask").remove();
         }
-        
+
         $original.off(".nmask");
-        
-        if ($original.is('input')) {
+
+        if ($original.is("input")) {
           $original.show().css({
-            opacity: '',
-            width: '',
-            height: '',
-            border: '',
-            padding: '',
-            margin: '',
-            minWidth: '',
-            minHeight: ''
+            opacity: "",
+            width: "",
+            height: "",
+            border: "",
+            padding: "",
+            margin: "",
+            minWidth: "",
+            minHeight: "",
           });
         }
       });
@@ -157,15 +198,15 @@
 
     return this.each(function () {
       const $original = $(this);
-      const isInput = $original.is('input');
-      
+      const isInput = $original.is("input");
+
       // Check if already initialized by looking for nmask-active data
-      if ($original.data('nmask-active')) {
+      if ($original.data("nmask-active")) {
         return; // Skip if already initialized
       }
 
       // Mark element as having nmask active
-      $original.data('nmask-active', true);
+      $original.data("nmask-active", true);
 
       // For input elements (original behavior with visual input)
       if (isInput) {
@@ -176,8 +217,9 @@
           $original.attr("id", originalId);
         }
 
-        const $visual = $('<input type="text" autocomplete="off">')
-          .addClass($original.attr("class") || "");
+        const $visual = $('<input type="text" autocomplete="off">').addClass(
+          $original.attr("class") || ""
+        );
 
         // Set ID for visual input only if original has ID
         if (originalId) {
@@ -192,10 +234,31 @@
           if ($original.prop(prop)) $visual.prop(prop, $original.prop(prop));
         });
 
-        // Copy all data-* attributes from original to visual input
-        $.each($original.data(), function(key, value) {
+        // Copy all data from original to visual (including custom data-*).
+        // We'll remove internal nmask keys from the visual afterwards so
+        // visual doesn't accidentally appear as the nmask source.
+        $.each($original.data(), function (key, value) {
           $visual.data(key, value);
         });
+
+        // After copying, explicitly remove internal nmask keys from the visual
+        // so it won't be treated as the primary source later.
+        try {
+          $visual.removeData("nmask-active");
+          $visual.removeData("nmask-visual");
+          $visual.removeData("nmask-hidden");
+          $visual.removeData("nmask-setValue");
+          $visual.removeData("nmask-getValue");
+        } catch (e) {
+          // ignore
+        }
+
+        // Mark the original as the original/source so selection logic can
+        // prefer it. Also set a dataset attribute for easier DOM inspection.
+        $original.data("nmask-original", true);
+        try {
+          $original.attr("data-nmask-original", "true");
+        } catch (e) {}
 
         $original.css({
           opacity: 0,
@@ -217,7 +280,7 @@
         }
 
         // Store reference to visual input in data
-        $original.data('nmask-visual', $visual);
+        $original.data("nmask-visual", $visual);
 
         $visual.val(formatNumber($original.val()));
         $original.attr("step", "any");
@@ -233,11 +296,15 @@
 
             if (settings.decimalDigits > 0) {
               decPart = decPart.slice(0, settings.decimalDigits);
-              let originalVal = decPart.length > 0 ? intPart + "." + decPart : intPart;
+              let originalVal =
+                decPart.length > 0 ? intPart + "." + decPart : intPart;
               $original.val(originalVal);
 
               let visualVal;
-              if (val.endsWith(settings.decimalSeparator) && decPart.length === 0) {
+              if (
+                val.endsWith(settings.decimalSeparator) &&
+                decPart.length === 0
+              ) {
                 visualVal = val;
               } else {
                 visualVal = formatNumber(originalVal);
@@ -271,31 +338,35 @@
         };
 
         $original.on("input.nmask change.nmask", syncFromOriginal);
-      } 
+      }
       // For non-input elements (display only - no ID required)
       else {
         // Create hidden input WITHOUT requiring ID
         const $hiddenInput = $('<input type="hidden">');
 
         // Set name attribute from data-name or generate unique name
-        const nameAttr = $original.attr("data-name") || 
-                        $original.attr("name") || 
-                        "nmask_field_" + Math.floor(Math.random() * 10000);
+        const nameAttr =
+          $original.attr("data-name") ||
+          $original.attr("name") ||
+          "nmask_field_" + Math.floor(Math.random() * 10000);
         $hiddenInput.attr("name", nameAttr);
 
         $original.after($hiddenInput);
 
         // Store reference to hidden input in data
-        $original.data('nmask-hidden', $hiddenInput);
+        $original.data("nmask-hidden", $hiddenInput);
+        // Mark the hidden input itself so selection logic can find it if needed
+        $hiddenInput.data("nmask-hidden", true);
 
         // Set initial value from element's text, data-value, or empty
-        const initialValue = $original.text() || $original.attr("data-value") || "";
+        const initialValue =
+          $original.text() || $original.attr("data-value") || "";
         const cleanInitial = cleanNumber(initialValue);
         $hiddenInput.val(cleanInitial);
         $original.text(formatNumber(cleanInitial));
 
         // Create setValue and getValue methods for .val() override
-        const setValue = function(value) {
+        const setValue = function (value) {
           const cleanVal = cleanNumber(value.toString());
           $hiddenInput.val(cleanVal);
           $original.text(formatNumber(cleanVal));
@@ -303,13 +374,13 @@
           $original.trigger("nmask:change", [cleanVal]);
         };
 
-        const getValue = function() {
+        const getValue = function () {
           return $hiddenInput.val();
         };
 
         // Store methods in jQuery data for .val() override
-        $original.data('nmask-setValue', setValue);
-        $original.data('nmask-getValue', getValue);
+        $original.data("nmask-setValue", setValue);
+        $original.data("nmask-getValue", getValue);
       }
 
       // Form submit handler
@@ -317,7 +388,7 @@
       if (form.length) {
         form.off("submit.nmask").on("submit.nmask", function () {
           if (isInput) {
-            const $visual = $original.data('nmask-visual');
+            const $visual = $original.data("nmask-visual");
             if ($visual && $visual.length) {
               $original.val(cleanNumber($visual.val()));
             }
