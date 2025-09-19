@@ -260,15 +260,16 @@
           $original.attr("data-nmask-original", "true");
         } catch (e) {}
 
-        $original.css({
-          opacity: 0,
-          width: 0,
-          height: 0,
-          border: "none",
-          padding: 0,
-          margin: 0,
-          minWidth: 0,
-          minHeight: 0,
+        $original.each(function () {
+          const el = this;
+          el.style.setProperty("opacity", "0", "important");
+          el.style.setProperty("width", "0", "important");
+          el.style.setProperty("height", "0", "important");
+          el.style.setProperty("border", "none", "important");
+          el.style.setProperty("padding", "0", "important");
+          el.style.setProperty("margin", "0", "important");
+          el.style.setProperty("min-width", "0", "important");
+          el.style.setProperty("min-height", "0", "important");
         });
         $original.attr("tabindex", -1);
 
