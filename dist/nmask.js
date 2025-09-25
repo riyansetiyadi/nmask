@@ -217,9 +217,13 @@
           $original.attr("id", originalId);
         }
 
-        const $visual = $('<input type="text" autocomplete="off">').addClass(
-          $original.attr("class") || ""
-        );
+        const inputMode = settings.decimalDigits > 0 ? "decimal" : "numeric";
+        const pattern =
+          settings.decimalDigits > 0 ? "[0-9]*[\\.,]?[0-9]*" : "[0-9]*";
+
+        const $visual = $('<input type="text" autocomplete="off">')
+          .addClass($original.attr("class") || "")
+          .attr({ inputmode: inputMode, pattern: pattern });
 
         // Set ID for visual input only if original has ID
         if (originalId) {
