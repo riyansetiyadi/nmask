@@ -100,32 +100,36 @@
     if (optionsOrMethod === "destroy") {
       return this.each(function () {
         const $original = $(this);
-
-        // Find visual input by data attribute instead of ID
         const $visual = $original.data("nmask-visual");
         const $hiddenInput = $original.data("nmask-hidden");
 
-        // Remove nmask data
-        $original.removeData("nmask-active");
-        $original.removeData("nmask-setValue");
-        $original.removeData("nmask-getValue");
-        $original.removeData("nmask-visual");
-        $original.removeData("nmask-hidden");
-        // Remove marker we added for original/source
-        $original.removeData("nmask-original");
-        try {
-          $original.removeAttr && $original.removeAttr("data-nmask-original");
-        } catch (e) {}
-
+        // Restore position & remove visual
         if ($visual && $visual.length) {
+          // Kembalikan original ke posisi visual input
+          $original.insertBefore($visual);
+          // Hapus visual input
           $visual.off(".nmask").remove();
         }
+
+        // Remove hidden input jika ada
         if ($hiddenInput && $hiddenInput.length) {
           $hiddenInput.off(".nmask").remove();
         }
 
-        $original.off(".nmask");
+        // Cleanup data & events
+        $original
+          .removeData([
+            "nmask-active",
+            "nmask-setValue",
+            "nmask-getValue",
+            "nmask-visual",
+            "nmask-hidden",
+            "nmask-original"
+          ])
+          .removeAttr("data-nmask-original")
+          .off(".nmask");
 
+        // Restore styles
         if ($original.is("input")) {
           $original.show().css({
             opacity: "",
@@ -135,7 +139,7 @@
             padding: "",
             margin: "",
             minWidth: "",
-            minHeight: "",
+            minHeight: ""
           });
         }
       });
