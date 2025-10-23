@@ -40,12 +40,54 @@ npm install nmask
     thousandsSeparator: '.',
     decimalSeparator: ',',
     decimalDigits: 0,
-    prefix: 'Rp '
+    prefix: 'Rp ',
+    suffix: ' IDR'  // New suffix option!
   });
 </script>
 ```
 
-### Display Elements (New Feature)
+## 🛠️ Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `thousandsSeparator` | string | '.' | Character to use as thousands separator |
+| `decimalSeparator` | string | ',' | Character to use as decimal separator |
+| `decimalDigits` | number | 0 | Number of decimal places to show |
+| `prefix` | string | '' | Text to add before the number (e.g., currency symbol) |
+| `suffix` | string | '' | Text to add after the number (e.g., currency code) |
+| `allowNegative` | boolean | false | Whether to allow negative numbers |
+
+### � Examples
+
+```javascript
+// Basic usage
+$('#price').nmask();  // Uses default options
+
+// Currency with prefix only
+$('#price').nmask({
+  prefix: '$',
+  thousandsSeparator: ',',
+  decimalSeparator: '.',
+  decimalDigits: 2
+});  // Output: $1,234.56
+
+// Currency with both prefix and suffix
+$('#amount').nmask({
+  prefix: '€',
+  suffix: ' EUR',
+  thousandsSeparator: '.',
+  decimalSeparator: ',',
+  decimalDigits: 2
+});  // Output: €1.234,56 EUR
+
+// Percentage with suffix
+$('#percentage').nmask({
+  suffix: '%',
+  decimalDigits: 1
+});  // Output: 75.5%
+```
+
+### 🎨 Display Elements
 
 ```html
 <!-- Format numbers in display elements -->

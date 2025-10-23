@@ -90,6 +90,7 @@
       decimalSeparator: ",",
       decimalDigits: 0,
       prefix: "",
+      suffix: "",
       allowNegative: false,
     };
 
@@ -165,10 +166,10 @@
         let decimalString =
           decPart.length > 0 ? settings.decimalSeparator + decPart : "";
         return (
-          (isNegative ? "-" : "") + settings.prefix + intPart + decimalString
+          (isNegative ? "-" : "") + settings.prefix + intPart + decimalString + settings.suffix
         );
       } else {
-        return (isNegative ? "-" : "") + settings.prefix + intPart;
+        return (isNegative ? "-" : "") + settings.prefix + intPart + settings.suffix;
       }
     };
 
@@ -176,6 +177,9 @@
       if (!val) return "";
       if (settings.prefix) {
         val = val.replace(new RegExp(escapeRegExp(settings.prefix), "g"), "");
+      }
+      if (settings.suffix) {
+        val = val.replace(new RegExp(escapeRegExp(settings.suffix), "g"), "");
       }
       if (settings.thousandsSeparator) {
         val = val.replace(
