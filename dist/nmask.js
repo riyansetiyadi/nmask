@@ -320,7 +320,29 @@
               } else {
                 visualVal = formatNumber(originalVal);
               }
+              
+              // Save cursor position relative to the number
+              const cursorPos = this.selectionStart;
+              const beforeCursor = val.slice(0, cursorPos);
+              const cleanBefore = cleanNumber(beforeCursor);
+              const relativePos = cleanBefore.length;
+              
+              // Set value
               $(this).val(visualVal);
+              
+              // Calculate new cursor position
+              const newVal = $(this).val();
+              const numberEndPos = newVal.length - (settings.suffix ? settings.suffix.length : 0);
+              const prefixLen = settings.prefix ? settings.prefix.length : 0;
+              
+              // Ensure cursor stays within the number part
+              let newPos = Math.min(
+                prefixLen + relativePos + Math.floor(relativePos / 3),
+                numberEndPos
+              );
+              
+              // Set cursor position
+              this.setSelectionRange(newPos, newPos);
             } else {
               $original.val(intPart);
               $(this).val(formatNumber(intPart));
