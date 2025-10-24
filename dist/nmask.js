@@ -125,7 +125,7 @@
             "nmask-getValue",
             "nmask-visual",
             "nmask-hidden",
-            "nmask-original"
+            "nmask-original",
           ])
           .removeAttr("data-nmask-original")
           .off(".nmask");
@@ -140,7 +140,7 @@
             padding: "",
             margin: "",
             minWidth: "",
-            minHeight: ""
+            minHeight: "",
           });
         }
       });
@@ -166,10 +166,16 @@
         let decimalString =
           decPart.length > 0 ? settings.decimalSeparator + decPart : "";
         return (
-          (isNegative ? "-" : "") + settings.prefix + intPart + decimalString + settings.suffix
+          (isNegative ? "-" : "") +
+          settings.prefix +
+          intPart +
+          decimalString +
+          settings.suffix
         );
       } else {
-        return (isNegative ? "-" : "") + settings.prefix + intPart + settings.suffix;
+        return (
+          (isNegative ? "-" : "") + settings.prefix + intPart + settings.suffix
+        );
       }
     };
 
@@ -305,48 +311,45 @@
             let intPart = parts[0].replace(/^(-)?0+(?=\d)/, "$1");
             let decPart = parts[1] || "";
 
+            // Save cursor position relative to the number
+            const cursorPos = this.selectionStart;
+            const beforeCursor = val.slice(0, cursorPos);
+            const cleanBefore = cleanNumber(beforeCursor);
+            const relativePos = cleanBefore.length;
+
+            let originalVal, visualVal;
+
             if (settings.decimalDigits > 0) {
               decPart = decPart.slice(0, settings.decimalDigits);
-              let originalVal =
-                decPart.length > 0 ? intPart + "." + decPart : intPart;
-              $original.val(originalVal);
+              originalVal = decPart.length > 0 ? intPart + "." + decPart : intPart;
 
-              let visualVal;
-              if (
-                val.endsWith(settings.decimalSeparator) &&
-                decPart.length === 0
-              ) {
+              if (val.endsWith(settings.decimalSeparator) && decPart.length === 0) {
                 visualVal = val;
               } else {
                 visualVal = formatNumber(originalVal);
               }
-              
-              // Save cursor position relative to the number
-              const cursorPos = this.selectionStart;
-              const beforeCursor = val.slice(0, cursorPos);
-              const cleanBefore = cleanNumber(beforeCursor);
-              const relativePos = cleanBefore.length;
-              
-              // Set value
-              $(this).val(visualVal);
-              
-              // Calculate new cursor position
-              const newVal = $(this).val();
-              const numberEndPos = newVal.length - (settings.suffix ? settings.suffix.length : 0);
-              const prefixLen = settings.prefix ? settings.prefix.length : 0;
-              
-              // Ensure cursor stays within the number part
-              let newPos = Math.min(
-                prefixLen + relativePos + Math.floor(relativePos / 3),
-                numberEndPos
-              );
-              
-              // Set cursor position
-              this.setSelectionRange(newPos, newPos);
             } else {
-              $original.val(intPart);
-              $(this).val(formatNumber(intPart));
+              originalVal = intPart;
+              visualVal = formatNumber(intPart);
             }
+
+            // Set values
+            $original.val(originalVal);
+            $(this).val(visualVal);
+
+            // Calculate new cursor position
+            const newVal = $(this).val();
+            const numberEndPos = newVal.length - (settings.suffix ? settings.suffix.length : 0);
+            const prefixLen = settings.prefix ? settings.prefix.length : 0;
+
+            // Ensure cursor stays within the number part
+            let newPos = Math.min(
+              prefixLen + relativePos + Math.floor(relativePos / 3),
+              numberEndPos
+            );
+
+            // Set cursor position
+            this.setSelectionRange(newPos, newPos);
 
             $original.trigger("input");
           } else {
