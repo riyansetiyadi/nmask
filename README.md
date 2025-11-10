@@ -6,6 +6,8 @@
 
 **Key benefit**: While users see nicely formatted numbers, the real values remain clean numbers that backend systems can easily process.
 
+**🎮 Try it out**: [Interactive Playground](https://riyansetiyadi.github.io/nmask/playground.html) - Test different configurations in real-time!
+
 ---
 
 ## 📦 Installation
@@ -325,8 +327,9 @@ This plugin is free to use, modify, and distribute — even for commercial proje
 
 ---
 
-## 🌐 Repository
+## 🌐 Links
 
 **GitHub:** [https://github.com/riyansetiyadi/nmask](https://github.com/riyansetiyadi/nmask)  
+**Playground:** [https://riyansetiyadi.github.io/nmask/playground.html](https://riyansetiyadi.github.io/nmask/playground.html)  
 **CDN:** [https://cdn.jsdelivr.net/npm/nmask](https://cdn.jsdelivr.net/npm/nmask)  
 **NPM:** [https://www.npmjs.com/package/nmask](https://www.npmjs.com/package/nmask)
