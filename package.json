@@ -1,7 +1,7 @@
 {
   "name": "nmask",
-  "version": "1.4.6-beta.20",
-  "description": "A lightweight jQuery plugin for masking numeric inputs with separators and prefix options.",
+  "version": "1.4.6-beta.21",
+  "description": "A lightweight and flexible jQuery plugin for numeric input masking with customizable separators, prefixes, and suffixes. Perfect for currency formatting, percentage inputs, and any number-based form fields.",
   "main": "dist/nmask.js",
   "keywords": [
     "mask",
@@ -9,7 +9,12 @@
     "jquery",
     "formatter",
     "input",
-    "currency"
+    "currency",
+    "numeric",
+    "format",
+    "separator",
+    "decimal",
+    "percentage"
   ],
   "author": "Riyan",
   "license": "MIT",
