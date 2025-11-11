@@ -174,18 +174,24 @@
 
                   <!-- Basic settings -->
                   <div class="row">
-                    <!-- Decimal Digits -->
-                    <div class="col-12 mb-3">
-                      <label class="form-label">Decimal Digits</label>
-                      <input
-                        type="number"
-                        class="form-control form-control-sm"
-                        id="decimalDigits"
-                        value="2"
-                        min="0"
-                        max="10"
-                      />
-                    </div>
+                    <!-- Decimal Digits + allowNegative (side-by-side on md+) -->
+                      <div class="col-12 col-md-6 mb-3">
+                        <label class="form-label">Decimal Digits</label>
+                        <input
+                          type="number"
+                          class="form-control form-control-sm"
+                          id="decimalDigits"
+                          value="2"
+                          min="0"
+                          max="10"
+                        />
+                      </div>
+                      <div class="col-12 col-md-6 mb-3 d-flex align-items-center">
+                        <div class="form-check form-switch ms-md-3 w-100">
+                          <input class="form-check-input" type="checkbox" id="allowNegative">
+                          <label class="form-check-label ms-2" for="allowNegative">Allow negative numbers</label>
+                        </div>
+                      </div>
 
                     <!-- Separators Group -->
                     <div class="col-12 mb-3">
@@ -249,6 +255,7 @@
                   </div>
 
                   <!-- Current Configuration -->
+                  <!-- Current Configuration -->
                   <div class="mt-4">
                     <h6>Current Configuration:</h6>
                     <pre class="current-config"></pre>
@@ -311,6 +318,9 @@
 
           const prefix = $("#prefix").val();
           const suffix = $("#suffix").val();
+          const allowNegative = $("#allowNegative").prop('checked');
+
+          if (allowNegative) config.allowNegative = true;
 
           if (prefix) config.prefix = prefix;
           if (suffix) config.suffix = suffix;
@@ -357,11 +367,13 @@
           $("#decimalSeparator").val(preset.decimalSeparator);
           $("#prefix").val(preset.prefix || "");
           $("#suffix").val(preset.suffix || "");
+          // set allowNegative if preset provides it
+          $("#allowNegative").prop('checked', !!preset.allowNegative);
           updateConfig();
         }
 
-        // Event listeners for settings changes
-        $(".settings-panel input").on("input", updateConfig);
+  // Event listeners for settings changes (include checkbox change)
+  $(".settings-panel input").on("input change", updateConfig);
 
         // Event listeners for preset buttons
         $(".preset-btn").on("click", function () {
