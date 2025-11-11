@@ -148,65 +148,91 @@
 
     const settings = $.extend({}, defaultSettings, optionsOrMethod);
 
-    const formatNumber = (value) => {
-      if (!value || isNaN(value)) return "";
+    const formatNumber = (value, preserveDecimalSeparator = false) => {
+      if (!value && value !== "0") return "";
+      
       let num = value.toString().replace(/[^0-9\-\.]/g, "");
       let isNegative = value.toString().startsWith("-");
       if (isNegative) num = num.substring(1);
+      
+      // Special handling for decimal point
+      const endsWithDecimal = preserveDecimalSeparator && value.toString().endsWith(".");
 
       let [intPart, decPart] = num.split(".");
+      intPart = intPart || "0"; // Use "0" if intPart is empty
       intPart = intPart.replace(/^0+(?=\d)/, ""); // remove leading zeros
+      if (intPart === "") intPart = "0"; // Ensure at least "0" is shown
+      
       intPart = intPart.replace(
         /\B(?=(\d{3})+(?!\d))/g,
         settings.thousandsSeparator
       );
 
+      let result = (isNegative ? "-" : "") + settings.prefix + intPart;
+
       if (settings.decimalDigits > 0) {
-        decPart = (decPart || "").slice(0, settings.decimalDigits);
-        let decimalString =
-          decPart.length > 0 ? settings.decimalSeparator + decPart : "";
-        return (
-          (isNegative ? "-" : "") +
-          settings.prefix +
-          intPart +
-          decimalString +
-          settings.suffix
-        );
-      } else {
-        return (
-          (isNegative ? "-" : "") + settings.prefix + intPart + settings.suffix
-        );
+        if (preserveDecimalSeparator && value.toString().endsWith(settings.decimalSeparator)) {
+          result += settings.decimalSeparator;
+        } else if (decPart !== undefined) {
+          decPart = (decPart || "").slice(0, settings.decimalDigits);
+          if (decPart.length > 0) {
+            result += settings.decimalSeparator + decPart;
+          }
+        }
       }
+
+      return result + settings.suffix;
     };
 
     const cleanNumber = (val) => {
       if (!val) return "";
+
+      // Remove prefix and suffix first
       if (settings.prefix) {
         val = val.replace(new RegExp(escapeRegExp(settings.prefix), "g"), "");
       }
       if (settings.suffix) {
         val = val.replace(new RegExp(escapeRegExp(settings.suffix), "g"), "");
       }
+
+      // Remove thousand separators
       if (settings.thousandsSeparator) {
         val = val.replace(
           new RegExp(escapeRegExp(settings.thousandsSeparator), "g"),
           ""
         );
       }
-      val = val.replace(
-        new RegExp(
-          `[^0-9${settings.allowNegative ? "\\-" : ""}${
-            settings.decimalSeparator === "."
-              ? ""
-              : escapeRegExp(settings.decimalSeparator)
-          }]`,
-          "g"
-        ),
-        ""
+
+      // First remove any prefix/suffix to avoid interfering with decimal validation
+      if (settings.prefix) {
+        val = val.replace(new RegExp("^" + escapeRegExp(settings.prefix)), "");
+      }
+      if (settings.suffix) {
+        val = val.replace(new RegExp(escapeRegExp(settings.suffix) + "$"), "");
+      }
+
+      // Create a regex that allows decimal separator (whether it's . or ,)
+      const decimalRegex = new RegExp(
+        `[^0-9${settings.allowNegative ? "\\-" : ""}${escapeRegExp(
+          settings.decimalSeparator
+        )}]`,
+        "g"
       );
-      if (settings.decimalSeparator && settings.decimalSeparator !== ".") {
+
+      // Clean the value but preserve the decimal separator
+      val = val.replace(decimalRegex, "");
+
+      // Handle multiple decimal separators - keep only the first one
+      const parts = val.split(settings.decimalSeparator);
+      if (parts.length > 1) {
+        val = parts[0] + settings.decimalSeparator + parts.slice(1).join("");
+      }
+
+      // Convert decimal separator to dot for internal processing
+      if (settings.decimalSeparator !== ".") {
         val = val.replace(settings.decimalSeparator, ".");
       }
+
       return val;
     };
 
@@ -289,6 +315,23 @@
         });
         $original.attr("tabindex", -1);
 
+        // Add mouseup event to handle selection
+        $visual.on("mouseup.nmask", function(e) {
+          const selectionStart = this.selectionStart;
+          const selectionEnd = this.selectionEnd;
+          const val = $(this).val();
+          const prefixLen = settings.prefix ? settings.prefix.length : 0;
+          const suffixLen = settings.suffix ? settings.suffix.length : 0;
+          const valueEndPos = val.length - suffixLen;
+
+          // If selection includes prefix or suffix, adjust it
+          if (selectionStart < prefixLen || selectionEnd > valueEndPos) {
+            const newStart = Math.max(selectionStart, prefixLen);
+            const newEnd = Math.min(selectionEnd, valueEndPos);
+            this.setSelectionRange(newStart, newEnd);
+          }
+        });
+
         if ($original.parent().hasClass("input-group")) {
           $visual.insertAfter($original);
           $original.insertAfter($original.parent());
@@ -302,17 +345,61 @@
         $visual.val(formatNumber($original.val()));
         $original.attr("step", "any");
 
+        const restrictCursorPosition = function(input) {
+          const val = input.value;
+          const cursorPos = input.selectionStart;
+          const prefixLen = settings.prefix ? settings.prefix.length : 0;
+          const suffixLen = settings.suffix ? settings.suffix.length : 0;
+          const valueEndPos = val.length - suffixLen;
+
+          // If cursor is in prefix area
+          if (cursorPos < prefixLen) {
+            input.setSelectionRange(prefixLen, prefixLen);
+          }
+          // If cursor is in suffix area
+          else if (cursorPos > valueEndPos) {
+            input.setSelectionRange(valueEndPos, valueEndPos);
+          }
+        };
+
+        // Add click and keyup handlers to restrict cursor
+        $visual.on("click.nmask keyup.nmask", function() {
+          restrictCursorPosition(this);
+        });
+
         $visual.on("input.nmask", function (e) {
           let val = $(this).val();
-          let cleanVal = cleanNumber(val);
+          const cursorPos = this.selectionStart;
 
-          if (cleanVal) {
+          // Detect decimal separator related conditions early
+          const justTypedDecimal = val.charAt(cursorPos - 1) === settings.decimalSeparator;
+          const isTypingAfterDecimal = val.charAt(cursorPos - 2) === settings.decimalSeparator;
+
+          let cleanVal = cleanNumber(val);
+          
+          // Handle empty input
+          if (!cleanVal && !val) {
+            $original.val("");
+            $(this).val("");
+            return;
+          }
+
+          // Special handling for empty input with only prefix/suffix
+          if (!cleanVal && (
+            (settings.suffix && val === settings.prefix + settings.suffix) ||
+            (settings.prefix && val === settings.prefix)
+          )) {
+            $(this).val("");
+            $original.val("");
+            return;
+          }
+
+          if (cleanVal || cleanVal === "0") {
             let parts = cleanVal.split(".");
-            let intPart = parts[0].replace(/^(-)?0+(?=\d)/, "$1");
+            let intPart = parts[0].replace(/^(-)?0+(?=\d)/, "$1") || "0";
             let decPart = parts[1] || "";
 
             // Save cursor position relative to the number
-            const cursorPos = this.selectionStart;
             const beforeCursor = val.slice(0, cursorPos);
             const cleanBefore = cleanNumber(beforeCursor);
             const relativePos = cleanBefore.length;
@@ -321,12 +408,17 @@
 
             if (settings.decimalDigits > 0) {
               decPart = decPart.slice(0, settings.decimalDigits);
-              originalVal = decPart.length > 0 ? intPart + "." + decPart : intPart;
-
-              if (val.endsWith(settings.decimalSeparator) && decPart.length === 0) {
-                visualVal = val;
+              
+              // Handle the case where we just typed a decimal separator
+              if (val.charAt(cursorPos - 1) === settings.decimalSeparator) {
+                originalVal = intPart + ".";
+                visualVal = formatNumber(originalVal, true);
               } else {
-                visualVal = formatNumber(originalVal);
+                originalVal = decPart.length > 0 ? intPart + "." + decPart : intPart;
+                
+                // Preserve decimal separator if it exists in the input
+                const hasDecimal = val.includes(settings.decimalSeparator);
+                visualVal = formatNumber(originalVal, hasDecimal);
               }
             } else {
               originalVal = intPart;
@@ -339,14 +431,39 @@
 
             // Calculate new cursor position
             const newVal = $(this).val();
-            const numberEndPos = newVal.length - (settings.suffix ? settings.suffix.length : 0);
+            const numberEndPos =
+              newVal.length - (settings.suffix ? settings.suffix.length : 0);
             const prefixLen = settings.prefix ? settings.prefix.length : 0;
+            const decimalIndex = newVal.indexOf(settings.decimalSeparator);
 
+            // Detect if we just typed or are right after decimal separator
+            const justTypedDecimalSeparator = val.charAt(cursorPos - 1) === settings.decimalSeparator;
+            const cursorAtDecimalPosition = decimalIndex !== -1 && cursorPos === decimalIndex + 1;
+            
+            // If we just typed decimal or are right after it, preserve that position
+            if (justTypedDecimalSeparator || cursorAtDecimalPosition) {
+              const newDecimalIndex = newVal.indexOf(settings.decimalSeparator);
+              if (newDecimalIndex !== -1) {
+                this.setSelectionRange(newDecimalIndex + 1, newDecimalIndex + 1);
+                return;
+              }
+            }
+
+            // For other cases, calculate cursor position
+            const isAfterDecimal = decimalIndex !== -1 && cursorPos > decimalIndex;
+            
             // Ensure cursor stays within the number part
-            let newPos = Math.min(
-              prefixLen + relativePos + Math.floor(relativePos / 3),
-              numberEndPos
-            );
+            let newPos;
+            if (isAfterDecimal) {
+              // Keep cursor position for decimal part
+              newPos = cursorPos;
+            } else {
+              // Adjust position for thousands separators
+              newPos = Math.min(
+                prefixLen + relativePos + Math.floor(relativePos / 3),
+                numberEndPos
+              );
+            }
 
             // Set cursor position
             this.setSelectionRange(newPos, newPos);
