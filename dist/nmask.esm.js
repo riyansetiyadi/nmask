@@ -45,14 +45,19 @@ class Nmask {
   initInput() {
     const inputMode = this.options.decimalDigits > 0 ? 'decimal' : 'numeric';
     
-    // Check if parent is input-group (Bootstrap)
-    this.isInputGroup = this.original.parentElement?.classList.contains('input-group');
+    // Check if parent is input-group (Bootstrap) - CRITICAL: check BEFORE any DOM manipulation
+    const parentElement = this.original.parentElement;
+    const hasInputGroupParent = parentElement && parentElement.classList.contains('input-group');
     
     console.log('DEBUG initInput:');
     console.log('  - original:', this.original);
-    console.log('  - parentElement:', this.original.parentElement);
-    console.log('  - parentElement className:', this.original.parentElement?.className);
-    console.log('  - isInputGroup:', this.isInputGroup);
+    console.log('  - parentElement:', parentElement);
+    console.log('  - parentElement className:', parentElement?.className);
+    console.log('  - hasInputGroupParent:', hasInputGroupParent);
+    console.log('  - Storing for later use: this.isInputGroup =', hasInputGroupParent);
+    
+    this.isInputGroup = hasInputGroupParent;
+    this.inputGroupParent = hasInputGroupParent ? parentElement : null;
     
     // Create visual input
     this.visual = document.createElement('input');
@@ -109,16 +114,21 @@ class Nmask {
     this.original.setAttribute('step', 'any');
 
     // Insert visual input - handle input-group differently
-    if (this.isInputGroup) {
-      const inputGroupParent = this.original.parentNode;
-      const inputGroupGrandparent = inputGroupParent.parentNode;
+    if (this.isInputGroup && this.inputGroupParent) {
+      console.log('DEBUG: Input-group detected - using saved reference');
+      console.log('  - inputGroupParent:', this.inputGroupParent);
+      console.log('  - inputGroupParent.parentNode:', this.inputGroupParent.parentNode);
+      
+      const inputGroupGrandparent = this.inputGroupParent.parentNode;
       
       // Step 1: Insert visual after original (dalam input-group)
-      inputGroupParent.insertBefore(this.visual, this.original.nextSibling);
+      this.inputGroupParent.insertBefore(this.visual, this.original.nextSibling);
+      console.log('After Step 1 - visual inserted in input-group');
       
       // Step 2: Move original to after input-group parent (keluar dari input-group)
       if (inputGroupGrandparent) {
-        inputGroupGrandparent.insertBefore(this.original, inputGroupParent.nextSibling);
+        inputGroupGrandparent.insertBefore(this.original, this.inputGroupParent.nextSibling);
+        console.log('After Step 2 - original moved outside input-group');
       }
     } else {
       // Standard insertion
