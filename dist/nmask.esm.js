@@ -45,6 +45,9 @@ class Nmask {
   initInput() {
     const inputMode = this.options.decimalDigits > 0 ? 'decimal' : 'numeric';
     
+    // Check if parent is input-group (Bootstrap)
+    this.isInputGroup = this.original.parentElement?.classList.contains('input-group');
+    
     // Create visual input
     this.visual = document.createElement('input');
     this.visual.type = 'text';
@@ -56,12 +59,19 @@ class Nmask {
       this.visual.className = this.original.className;
     }
 
+    // Auto-generate ID only if needed for input-group functionality
+    let originalId = this.original.id;
+    if (!originalId && this.isInputGroup) {
+      originalId = 'nmask_' + Math.floor(Math.random() * 10000);
+      this.original.id = originalId;
+    }
+
     // Copy attributes
     if (this.original.placeholder) {
       this.visual.placeholder = this.original.placeholder;
     }
-    if (this.original.id) {
-      this.visual.id = this.original.id + '_visual';
+    if (originalId) {
+      this.visual.id = originalId + '_visual';
     }
 
     // Copy properties
@@ -92,8 +102,17 @@ class Nmask {
     this.original.tabIndex = -1;
     this.original.setAttribute('step', 'any');
 
-    // Insert visual input after original
-    this.original.parentNode.insertBefore(this.visual, this.original.nextSibling);
+    // Insert visual input - handle input-group differently
+    if (this.isInputGroup) {
+      // For input-group: insert visual after original, then move original after parent
+      this.original.parentNode.insertBefore(this.visual, this.original.nextSibling);
+      // Move original outside input-group
+      const inputGroupParent = this.original.parentNode;
+      inputGroupParent.parentNode?.insertBefore(this.original, inputGroupParent.nextSibling);
+    } else {
+      // Standard insertion
+      this.original.parentNode.insertBefore(this.visual, this.original.nextSibling);
+    }
 
     // Initialize visual value
     this.visual.value = this.formatNumber(this.original.value);
