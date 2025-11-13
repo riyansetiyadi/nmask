@@ -1,8 +1,25 @@
 {
   "name": "nmask",
-  "version": "1.4.6",
-  "description": "A lightweight and flexible jQuery plugin for numeric input masking with customizable separators, prefixes, and suffixes. Perfect for currency formatting, percentage inputs, and any number-based form fields.",
+  "version": "1.5.0-beta.1",
+  "description": "A lightweight and flexible number input masking library with zero dependencies. Supports vanilla JS, jQuery, React, Vue, Next.js, and any modern framework. Perfect for currency, percentage, and numeric formatting.",
   "main": "dist/nmask.js",
+  "module": "dist/nmask.esm.js",
+  "browser": "dist/nmask.vanilla.js",
+  "exports": {
+    ".": {
+      "import": "./dist/nmask.esm.js",
+      "require": "./dist/nmask.js",
+      "browser": "./dist/nmask.vanilla.js"
+    },
+    "./vanilla": "./dist/nmask.vanilla.js",
+    "./esm": "./dist/nmask.esm.js",
+    "./jquery": "./dist/nmask.js"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
   "keywords": [
     "mask",
     "number",
@@ -18,6 +35,11 @@
   ],
   "author": "Riyan",
   "license": "MIT",
+  "optionalPeerDependencies": {
+    "jquery": ">=3.0.0"
+  },
+  "homepage": "https://github.com/riyansetiyadi/nmask",
+  "bugs": "https://github.com/riyansetiyadi/nmask/issues",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/riyansetiyadi/nmask.git"

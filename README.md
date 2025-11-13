@@ -1,8 +1,13 @@
 # nmask
 
-`nmask` is a lightweight jQuery plugin for **universal number formatting** that works with both input elements and display elements. Format numbers with thousands separators, decimal formatting, and optional prefixes (like currency symbols).  
+`nmask` is a **universal number formatting solution** with three versions to fit any project:
+- **jQuery** – Classic plugin for existing projects
+- **Vanilla JS** – Zero dependencies, pure JavaScript
+- **ES Module** – Modern bundlers (webpack, Vite, Next.js)
 
-**✨ Latest**: Now supports formatting numbers in **any HTML element** (`<div>`, `<span>`, etc.) while maintaining full backward compatibility!
+Format numbers with thousands separators, decimal formatting, and optional prefixes/suffixes (like currency symbols).
+
+**✨ Latest (v1.5.0-beta.1)**: Zero-dependency vanilla JS & ES Module support! Perfect for **React**, **Vue**, **Next.js**, **Svelte**, and any modern framework.
 
 **Key benefit**: While users see nicely formatted numbers, the real values remain clean numbers that backend systems can easily process.
 
@@ -10,45 +15,275 @@
 
 ---
 
-## 📦 Installation
+## 📦 Installation & Setup
 
-### 🔗 CDN (via jsDelivr)
+### Option 1: jQuery (Classic)
+For traditional jQuery projects or existing codebases:
 
+#### 🔗 CDN
 ```html
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/nmask/dist/nmask.js"></script>
-````
+<script src="https://cdn.jsdelivr.net/npm/nmask@1.5.0-beta.1/dist/nmask.js"></script>
 
-### 📦 npm
+<input type="text" id="price">
+<script>
+  $('#price').nmask({ prefix: '$', decimalDigits: 2 });
+</script>
+```
 
+#### 📦 npm/CommonJS
 ```bash
 npm install nmask
+```
+```javascript
+const $ = require('jquery');
+require('nmask');
+
+$('#price').nmask({ prefix: '$', decimalDigits: 2 });
 ```
 
 ---
 
-## ✨ Usage
+### Option 2: Vanilla JS (Zero Dependencies)
+For modern frameworks, vanilla projects, or when jQuery is not desired:
 
-### 🎯 Input Elements (Original Functionality)
-
+#### 🔗 CDN
 ```html
-<form method="POST">
-  <input type="number" id="price" name="price" value="1500000" />
-  <button type="submit">Save</button>
-</form>
-
+<input type="text" id="price">
+<script src="https://cdn.jsdelivr.net/npm/nmask@1.5.0-beta.1/dist/nmask.vanilla.js"></script>
 <script>
-  $('#price').nmask({
-    thousandsSeparator: '.',
-    decimalSeparator: ',',
-    decimalDigits: 0,
-    prefix: 'Rp ',
-    suffix: ' IDR'  // New suffix option!
-  });
+  const input = document.getElementById('price');
+  nmaskify(input, { prefix: '$', decimalDigits: 2 });
 </script>
 ```
 
-## 🛠️ Options
+#### 📦 npm/CommonJS
+```bash
+npm install nmask
+```
+```javascript
+const { nmaskify } = require('nmask/dist/nmask.vanilla.js');
+
+const input = document.getElementById('price');
+nmaskify(input, { prefix: '$', decimalDigits: 2 });
+```
+
+---
+
+### Option 3: ES Module (Modern Bundlers)
+For **React**, **Vue**, **Next.js**, **Svelte**, **Vite**, and any ES6 module-compatible project:
+
+#### 📦 npm
+```bash
+npm install nmask
+```
+
+#### React Example
+```jsx
+import { Nmask } from 'nmask';
+import { useEffect, useRef } from 'react';
+
+export default function PriceInput() {
+  const inputRef = useRef(null);
+  
+  useEffect(() => {
+    if (inputRef.current) {
+      const nmask = new Nmask(inputRef.current, {
+        prefix: '$',
+        decimalDigits: 2,
+        thousandsSeparator: ','
+      });
+      
+      return () => nmask.destroy();
+    }
+  }, []);
+  
+  return <input ref={inputRef} type="text" />;
+}
+```
+
+#### Vue 3 Example
+```vue
+<template>
+  <input ref="inputRef" type="text" />
+</template>
+
+<script setup>
+import { Nmask } from 'nmask';
+import { onMounted, onBeforeUnmount, ref } from 'vue';
+
+const inputRef = ref(null);
+let nmask = null;
+
+onMounted(() => {
+  nmask = new Nmask(inputRef.value, {
+    prefix: '$',
+    decimalDigits: 2
+  });
+});
+
+onBeforeUnmount(() => {
+  nmask?.destroy();
+});
+</script>
+```
+
+#### Next.js App Router Example (Recommended)
+```jsx
+'use client';  // Required for browser APIs
+
+import { useEffect, useRef } from 'react';
+import { Nmask } from 'nmask';
+
+export default function PriceInput() {
+  const inputRef = useRef(null);
+  const nmaskRef = useRef(null);
+  
+  useEffect(() => {
+    if (inputRef.current && !nmaskRef.current) {
+      nmaskRef.current = new Nmask(inputRef.current, {
+        prefix: '$',
+        decimalDigits: 2,
+        thousandsSeparator: ','
+      });
+    }
+    
+    return () => {
+      nmaskRef.current?.destroy();
+      nmaskRef.current = null;
+    };
+  }, []);
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const cleanValue = nmaskRef.current.val();
+    console.log('Clean value:', cleanValue);
+    
+    // Send to API
+    await fetch('/api/order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ price: cleanValue })
+    });
+  };
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      <input ref={inputRef} type="text" name="price" placeholder="$0.00" />
+      <button type="submit">Submit</button>
+    </form>
+  );
+}
+```
+
+#### Next.js Pages Router Example
+```jsx
+import { useEffect, useRef } from 'react';
+import { Nmask } from 'nmask';
+
+export default function PriceInput() {
+  const inputRef = useRef(null);
+  
+  useEffect(() => {
+    if (typeof window === 'undefined') return; // Skip on server
+    
+    const nmask = new Nmask(inputRef.current, {
+      prefix: '$',
+      decimalDigits: 2
+    });
+    
+    return () => nmask.destroy();
+  }, []);
+  
+  return <input ref={inputRef} type="text" name="price" placeholder="$0.00" />;
+}
+```
+
+#### Next.js with Custom Hook (Best Practice)
+```jsx
+'use client';
+
+import { useEffect, useRef } from 'react';
+import { Nmask } from 'nmask';
+
+// Reusable hook
+export function useNmask(options = {}) {
+  const ref = useRef(null);
+  const nmaskRef = useRef(null);
+
+  useEffect(() => {
+    if (ref.current && !nmaskRef.current) {
+      nmaskRef.current = new Nmask(ref.current, {
+        thousandsSeparator: ',',
+        decimalSeparator: '.',
+        decimalDigits: 2,
+        ...options
+      });
+    }
+
+    return () => {
+      nmaskRef.current?.destroy();
+      nmaskRef.current = null;
+    };
+  }, [options]);
+
+  return [ref, nmaskRef];
+}
+
+// Usage in any component
+export function OrderForm() {
+  const [priceRef, priceNmask] = useNmask({ prefix: '$' });
+  const [taxRef, taxNmask] = useNmask({ prefix: '$' });
+
+  return (
+    <form>
+      <input ref={priceRef} type="text" placeholder="$0.00" />
+      <input ref={taxRef} type="text" placeholder="$0.00" />
+    </form>
+  );
+}
+```
+
+#### Vanilla JavaScript Example
+```html
+<html>
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/nmask@1.5.0-beta.1/dist/nmask.esm.js" type="module"></script>
+</head>
+<body>
+  <input type="text" id="price">
+  
+  <script type="module">
+    import { Nmask } from 'https://cdn.jsdelivr.net/npm/nmask@1.5.0-beta.1/dist/nmask.esm.js';
+    
+    const input = document.getElementById('price');
+    const nmask = new Nmask(input, {
+      prefix: '$',
+      decimalDigits: 2,
+      thousandsSeparator: ','
+    });
+  </script>
+</body>
+</html>
+```
+
+---
+
+## 📊 Version Comparison
+
+| Feature | jQuery | Vanilla JS | ES Module |
+|---------|--------|-----------|-----------|
+| **Dependencies** | jQuery 3.0+ | None | None |
+| **Bundle Size** | +24KB (jQuery) | ~7KB | ~6.5KB |
+| **Best For** | Legacy projects | Vanilla JS, static sites | React, Vue, Next.js |
+| **API** | `$().nmask()` | `nmaskify()` / class | `new Nmask()` class |
+| **Installation** | CDN or npm | CDN or npm | npm + bundler |
+| **SSR Support** | ❌ | ✅ | ✅ |
+| **Tree-shakeable** | ❌ | ❌ | ✅ |
+
+---
+
+## ⚙️ Configuration Options
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -59,13 +294,16 @@ npm install nmask
 | `suffix` | string | '' | Text to add after the number (e.g., currency code) |
 | `allowNegative` | boolean | false | Whether to allow negative numbers |
 
-### � Examples
+---
 
+## 🎯 Usage Examples
+
+### jQuery - Basic
 ```javascript
-// Basic usage
-$('#price').nmask();  // Uses default options
+// Basic usage with defaults
+$('#price').nmask();
 
-// Currency with prefix only
+// Currency with prefix
 $('#price').nmask({
   prefix: '$',
   thousandsSeparator: ',',
@@ -73,7 +311,7 @@ $('#price').nmask({
   decimalDigits: 2
 });  // Output: $1,234.56
 
-// Currency with both prefix and suffix
+// Currency with prefix and suffix
 $('#amount').nmask({
   prefix: '€',
   suffix: ' EUR',
@@ -87,235 +325,427 @@ $('#percentage').nmask({
   suffix: '%',
   decimalDigits: 1
 });  // Output: 75.5%
-```
 
-### 🎨 Display Elements
-
-```html
-<!-- Format numbers in display elements -->
-<div class="total-display" data-name="formatted_total">1500000</div>
-<span class="price-tag">2500.50</span>
-
-<script>
-  // Format display elements
-  $('.total-display').nmask({
-    thousandsSeparator: '.',
-    prefix: 'Rp '
-  });
-  
-  $('.price-tag').nmask({
-    thousandsSeparator: ',',
-    decimalSeparator: '.',
-    decimalDigits: 2,
-    prefix: '$'
-  });
-  
-  // Use .val() on any masked element!
-  $('.total-display').val(3000000); // Updates display AND hidden form field
-  $('.price-tag').val(1299.99);
-</script>
-```
-
-### Multiple Elements with Same Setup
-
-```javascript
-// Apply same formatting to multiple elements
-$('.total-display, .credit, .debit').nmask({
+// Indonesian Rupiah
+$('#rupiah').nmask({
   prefix: 'Rp ',
   thousandsSeparator: '.',
-  decimalSeparator: ',',
   decimalDigits: 0
-});
+});  // Output: Rp 1.500.000
 ```
 
----
-
-## ⚙️ Configuration Options
-
-| Option               | Type      | Default | Description                           |
-| -------------------- | --------- | ------- | ------------------------------------- |
-| `thousandsSeparator` | `string`  | `.`     | Character used as thousands separator |
-| `decimalSeparator`   | `string`  | `,`     | Character used as decimal separator   |
-| `decimalDigits`      | `number`  | `0`     | Number of decimal places to show      |
-| `prefix`             | `string`  | `''`    | Text prefix (e.g. `'Rp '` or `'$'`)   |
-| `allowNegative`      | `boolean` | `false` | Allow negative values                 |
-
----
-
-## 🧠 How It Works
-
-### For Input Elements:
-* The original `<input type="number">` is **hidden**, but keeps its `name` and raw numeric value
-* A new visible `<input type="text">` is created for formatted interaction
-* User input is masked visually while the numeric value is synced back to the hidden input
-* On form submission, your backend receives the **clean numeric value**
-
-### For Display Elements:
-* The element displays the **formatted number** (e.g., "Rp 1.500.000")
-* A **hidden input** is automatically created for form submission
-* Use `data-name` attribute to specify the field name, or one will be auto-generated
-* Use `.val()` to get/set the raw numeric value programmatically
-
----
-
-## 🔍 Example Output
-
-### Input Elements
-| Visual Input   | Real Value              | Submitted Value |
-| -------------- | ----------------------- | --------------- |
-| `Rp 1.500.000` | `1500000`               | `1500000`       |
-| `-1.234,50`    | `-1234.50` (if allowed) | `-1234.50`      |
-
-### Display Elements
-| Display Text   | `.val()` Returns | Hidden Input Value |
-| -------------- | ---------------- | ------------------ |
-| `Rp 1.500.000` | `1500000`        | `1500000`          |
-| `$1,234.50`    | `1234.50`        | `1234.50`          |
-
----
-
-## Universal .val() Support
-
-nmask overrides jQuery's `.val()` method to work seamlessly with both input and display elements:
-
+### Vanilla JS - Basic
 ```javascript
-// Works on inputs (existing behavior)
-$('#price-input').val(15000);
-console.log($('#price-input').val()); // "15000"
+// Using the nmaskify helper function
+const input = document.getElementById('price');
+nmaskify(input, {
+  prefix: '$',
+  decimalDigits: 2,
+  thousandsSeparator: ','
+});
 
-// Now works on display elements too!
-$('.price-display').val(25000);
-console.log($('.price-display').val()); // "25000"
-console.log($('.price-display').text()); // "Rp 25.000" (formatted display)
+// Or using the Nmask class directly
+const nmask = new Nmask(input, {
+  prefix: '$',
+  decimalDigits: 2
+});
+
+// Get or set values
+nmask.val();        // Get clean numeric value
+nmask.val(1500);    // Set and format
+nmask.destroy();    // Clean up
+```
+
+### ES Module - React with Custom Hook
+```jsx
+import { useEffect, useRef } from 'react';
+import { Nmask } from 'nmask';
+
+// Custom hook for easier reuse
+export function useNmask(options = {}) {
+  const inputRef = useRef(null);
+  const nmaskRef = useRef(null);
+  
+  useEffect(() => {
+    if (inputRef.current && !nmaskRef.current) {
+      nmaskRef.current = new Nmask(inputRef.current, options);
+    }
+    
+    return () => {
+      nmaskRef.current?.destroy();
+      nmaskRef.current = null;
+    };
+  }, [options]);
+  
+  return inputRef;
+}
+
+// Usage
+export function CurrencyInput() {
+  const inputRef = useNmask({
+    prefix: '$',
+    decimalDigits: 2,
+    thousandsSeparator: ','
+  });
+  
+  return <input ref={inputRef} type="text" placeholder="$0.00" />;
+}
+```
+
+### Display Elements (All Versions)
+
+#### jQuery
+```javascript
+// Format display elements
+$('.total-display').nmask({
+  thousandsSeparator: '.',
+  prefix: 'Rp '
+});
+
+// Update values
+$('.total-display').val(3000000); // Updates display
+```
+
+#### Vanilla JS
+```javascript
+const display = document.querySelector('.total-display');
+nmaskify(display, {
+  thousandsSeparator: '.',
+  prefix: 'Rp '
+});
+
+// Update value
+const nmask = new Nmask(display, { prefix: 'Rp ' });
+nmask.val(3000000);
 ```
 
 ---
 
 ## 🔄 Form Integration
 
-### Input Elements
+### With Input Elements
 ```html
 <form method="POST">
-  <input type="number" name="price" id="price" />
+  <input type="text" name="price" id="price" value="1500000" />
+  <button type="submit">Save</button>
 </form>
-<!-- Submits: price=1500000 -->
+
+<script>
+  // jQuery
+  $('#price').nmask({ prefix: '$', decimalDigits: 2 });
+  // User sees: $1,500,000.00
+  // Server receives: price=1500000
+</script>
 ```
 
-### Display Elements
+### With Display Elements
 ```html
 <form method="POST">
-  <div class="total" data-name="total_amount">1500000</div>
+  <div class="total-display" data-name="total_amount">1500000</div>
+  <button type="submit">Save</button>
 </form>
-<!-- Auto-creates: <input type="hidden" name="total_amount" value="1500000"> -->
+
+<script>
+  // jQuery
+  $('.total-display').nmask({ prefix: '$', decimalDigits: 2 });
+  // Auto-creates: <input type="hidden" name="total_amount" value="1500000">
+  // User sees: $1,500,000.00
+  // Server receives: total_amount=1500000
+</script>
 ```
 
 ---
 
-## 🔄 Dynamic Updates & Synchronization
+## 🔄 Getting & Setting Values
 
-### Recommended Approach
+### jQuery
 ```javascript
-// Universal - works for both input and display elements
-$('#myInput').val(15000);        // Automatically syncs
-$('.myDisplay').val(25000);      // Automatically syncs
+// Get value
+const value = $('#price').val();  // Returns clean numeric value
+
+// Set value
+$('#price').val(2500.50);  // Updates and formats automatically
 ```
 
-### Legacy Approach
+### Vanilla JS
 ```javascript
-// Still works, but .val() method above is preferred
-$('#myInput').val(15000).trigger('change');
+const input = document.getElementById('price');
+const nmask = new Nmask(input, { prefix: '$', decimalDigits: 2 });
+
+// Get value
+const value = nmask.val();  // Returns clean numeric value
+
+// Set value
+nmask.val(2500.50);  // Updates and formats automatically
+```
+
+### ES Module (React)
+```jsx
+import { useRef } from 'react';
+import { Nmask } from 'nmask';
+
+export function PriceComponent() {
+  const inputRef = useRef(null);
+  const nmaskRef = useRef(null);
+  
+  const handleSetPrice = (newPrice) => {
+    nmaskRef.current?.val(newPrice);
+  };
+  
+  const handleGetPrice = () => {
+    const price = nmaskRef.current?.val();
+    console.log('Clean price:', price);
+  };
+  
+  return (
+    <>
+      <input ref={inputRef} type="text" />
+      <button onClick={() => handleSetPrice(1500)}>Set $1,500</button>
+      <button onClick={handleGetPrice}>Get Value</button>
+    </>
+  );
+}
 ```
 
 ---
 
-## 🔄 Multiple Element Formatting
+## 🌍 Localization Examples
 
+### US Dollar
 ```javascript
-// Format all currency inputs
-$('.currency-input').nmask({
-  prefix: '$ ',
+// jQuery
+$('#price').nmask({
+  prefix: '$',
   thousandsSeparator: ',',
   decimalSeparator: '.',
   decimalDigits: 2
 });
+// Output: $1,234.56
+```
 
-// Format display elements
-$('.price-display').nmask({
+### European Format
+```javascript
+// jQuery
+$('#price').nmask({
+  prefix: '€ ',
+  thousandsSeparator: '.',
+  decimalSeparator: ',',
+  decimalDigits: 2
+});
+// Output: € 1.234,56
+```
+
+### Indonesian Rupiah
+```javascript
+// jQuery
+$('#price').nmask({
   prefix: 'Rp ',
   thousandsSeparator: '.',
   decimalDigits: 0
 });
+// Output: Rp 1.500.000
+```
 
-// Mix and match
-$('.financial-number').nmask({
-  thousandsSeparator: ',',
+### Percentage
+```javascript
+// jQuery
+$('#percentage').nmask({
+  suffix: '%',
+  decimalDigits: 1
+});
+// Output: 75.5%
+```
+
+### Percentage with Prefix
+```javascript
+// jQuery
+$('#discount').nmask({
+  prefix: 'Save ',
+  suffix: '%',
+  decimalDigits: 0
+});
+// Output: Save 25%
+```
+
+---
+
+## 🚀 Advanced Features
+
+### Allow Negative Numbers
+```javascript
+// jQuery
+$('#amount').nmask({
   decimalDigits: 2,
   allowNegative: true
+});
+// Output can be: -1,234.56
+```
+
+### Multiple Elements
+```javascript
+// jQuery - Format all with one call
+$('.currency-input, .price-display').nmask({
+  prefix: '$',
+  decimalDigits: 2
+});
+```
+
+### Dynamic Options (jQuery)
+```javascript
+// Change configuration based on user selection
+$('#currency-select').on('change', function() {
+  const currency = $(this).val();
+  const options = {
+    USD: { prefix: '$', thousandsSeparator: ',', decimalSeparator: '.' },
+    EUR: { prefix: '€ ', thousandsSeparator: '.', decimalSeparator: ',' },
+    IDR: { prefix: 'Rp ', thousandsSeparator: '.', decimalDigits: 0 }
+  };
+  
+  $('#price').nmask('destroy');
+  $('#price').nmask(options[currency]);
 });
 ```
 
 ---
 
-## 🎯 Use Cases
+## ❌ Cleanup & Destroy
 
-### Traditional (Input Elements)
-- ✅ Form inputs for prices, quantities, amounts
-- ✅ User data entry with validation
-- ✅ E-commerce checkout forms
-
-### Display Elements (New Feature)
-- ✅ Dashboard number displays
-- ✅ Report summaries and totals  
-- ✅ Real-time calculated values
-- ✅ Read-only formatted numbers that still submit to forms
-- ✅ Interactive displays that can be updated via JavaScript
-
----
-
-## ❌ Destroy
-
-Remove the plugin behavior and restore original state:
-
+### jQuery
 ```javascript
-// For input elements
-$('input[name="price"]').nmask('destroy');
-
-// For display elements  
+// Remove formatting and restore original behavior
+$('#price').nmask('destroy');
 $('.price-display').nmask('destroy');
 ```
 
-This will:
-* Remove visual/hidden input elements
-* Restore original element visibility and styling
-* Clean up all event listeners and data attributes
-* Stop internal observers
+### Vanilla JS
+```javascript
+const nmask = new Nmask(element, options);
+nmask.destroy();  // Clean up all event listeners and DOM changes
+```
+
+### React
+```jsx
+useEffect(() => {
+  const nmask = new Nmask(inputRef.current, options);
+  return () => nmask.destroy();  // Cleanup on unmount
+}, []);
+```
 
 ---
 
-## Migration & Compatibility
+## 🔄 Migration Guide
 
-**✅ Fully backward compatible!** All existing code continues to work unchanged.
+### From jQuery to Vanilla JS
+```javascript
+// Before (jQuery)
+$('#price').nmask({ prefix: '$', decimalDigits: 2 });
+const value = $('#price').val();
 
-### Latest Features:
-- ✨ Support for non-input elements (`<div>`, `<span>`, etc.)
-- ✨ Universal `.val()` method override
-- ✨ Automatic hidden input creation for forms
-- ✨ `data-name` attribute support
-- 🔧 Improved element tracking and cleanup
-- 🔧 Enhanced destroy method
+// After (Vanilla JS)
+const input = document.getElementById('price');
+const nmask = new Nmask(input, { prefix: '$', decimalDigits: 2 });
+const value = nmask.val();
 
-### Breaking Changes:
-**None!** Complete backward compatibility maintained.
+// Cleanup
+// Before: $('#price').nmask('destroy');
+// After: nmask.destroy();
+```
+
+### From jQuery to React (ES Module)
+```jsx
+// Before (jQuery)
+$(document).ready(() => {
+  $('#price').nmask({ prefix: '$', decimalDigits: 2 });
+});
+
+// After (React)
+import { useEffect, useRef } from 'react';
+import { Nmask } from 'nmask';
+
+export default function PriceInput() {
+  const inputRef = useRef(null);
+  
+  useEffect(() => {
+    const nmask = new Nmask(inputRef.current, {
+      prefix: '$',
+      decimalDigits: 2
+    });
+    
+    return () => nmask.destroy();
+  }, []);
+  
+  return <input ref={inputRef} type="text" />;
+}
+```
 
 ---
 
-## ⚠️ Notes
+## 📚 How It Works
 
-* For input elements: Only the original numeric input is submitted
-* For display elements: Hidden input with clean numeric value is submitted  
-* Plugin works with existing and dynamically generated elements
-* Easy integration with any backend framework (Laravel, Express, Django, etc.)
-* Supports Bootstrap input-group components
+### Input Elements:
+1. Hidden original `<input type="number">` keeps raw numeric value
+2. New visible `<input type="text">` displays formatted number
+3. User input is masked visually, synced to hidden input
+4. Form submission sends clean numeric value to backend
+
+### Display Elements:
+1. Element displays formatted number
+2. Hidden input created automatically for form submission
+3. Use `data-name` attribute to specify field name
+4. `.val()` gets/sets the raw numeric value
+
+---
+
+## 🎮 Interactive Playground
+
+Test all features in real-time: [nmask Playground](https://riyansetiyadi.github.io/nmask/playground.html)
+
+- ✅ Multiple presets (currency, percentage, European format)
+- ✅ Configurable separators and decimal digits
+- ✅ Custom prefix/suffix
+- ✅ Allow negative numbers toggle
+- ✅ Real-time formatting preview
+- ✅ Live clean value display
+
+---
+
+## 🤝 Compatibility
+
+### Browsers
+- ✅ Chrome 50+
+- ✅ Firefox 45+
+- ✅ Safari 10+
+- ✅ Edge 15+
+- ✅ Mobile browsers (iOS Safari, Chrome Mobile)
+
+### Frameworks
+- ✅ React 16.0+
+- ✅ Vue 2.0+ & Vue 3.0+
+- ✅ Angular 2+
+- ✅ Svelte
+- ✅ Next.js 12+
+- ✅ Vite
+- ✅ Plain vanilla JavaScript
+- ✅ jQuery projects (backward compatible)
+
+### Build Tools
+- ✅ webpack
+- ✅ Vite
+- ✅ Rollup
+- ✅ TypeScript
+- ✅ CommonJS
+- ✅ ES Modules
+
+---
+
+## ⚠️ Important Notes
+
+- **Form Submission**: Only clean numeric values are sent to the backend
+- **Display Elements**: Automatically creates hidden inputs for form integration
+- **Backward Compatible**: All existing jQuery code continues to work
+- **No jQuery Required**: Vanilla JS and ES Module versions are completely independent
+- **Multiple Instances**: Each element can have independent formatting options
+- **Dynamic Updates**: Use `.val()` to update formatted values in real-time
 
 ---
 
@@ -327,9 +757,19 @@ This plugin is free to use, modify, and distribute — even for commercial proje
 
 ---
 
-## 🌐 Links
+## 🔗 Links
 
-**GitHub:** [https://github.com/riyansetiyadi/nmask](https://github.com/riyansetiyadi/nmask)  
-**Playground:** [https://riyansetiyadi.github.io/nmask/playground.html](https://riyansetiyadi.github.io/nmask/playground.html)  
-**CDN:** [https://cdn.jsdelivr.net/npm/nmask](https://cdn.jsdelivr.net/npm/nmask)  
-**NPM:** [https://www.npmjs.com/package/nmask](https://www.npmjs.com/package/nmask)
+| Link | URL |
+|------|-----|
+| **GitHub** | [github.com/riyansetiyadi/nmask](https://github.com/riyansetiyadi/nmask) |
+| **Playground** | [playground.html](https://riyansetiyadi.github.io/nmask/playground.html) |
+| **NPM Package** | [npmjs.com/package/nmask](https://www.npmjs.com/package/nmask) |
+| **CDN** | [cdn.jsdelivr.net/npm/nmask](https://cdn.jsdelivr.net/npm/nmask) |
+
+---
+
+## 📖 Support & Contributing
+
+Found a bug? Have a feature request? Visit the [GitHub Issues](https://github.com/riyansetiyadi/nmask/issues) page.
+
+Contributions are welcome! Please feel free to submit a Pull Request.
