@@ -48,6 +48,12 @@ class Nmask {
     // Check if parent is input-group (Bootstrap)
     this.isInputGroup = this.original.parentElement?.classList.contains('input-group');
     
+    console.log('DEBUG initInput:');
+    console.log('  - original:', this.original);
+    console.log('  - parentElement:', this.original.parentElement);
+    console.log('  - parentElement className:', this.original.parentElement?.className);
+    console.log('  - isInputGroup:', this.isInputGroup);
+    
     // Create visual input
     this.visual = document.createElement('input');
     this.visual.type = 'text';
