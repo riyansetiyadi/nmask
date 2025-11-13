@@ -104,12 +104,16 @@ class Nmask {
 
     // Insert visual input - handle input-group differently
     if (this.isInputGroup) {
-      // For input-group: save reference to input-group parent first
       const inputGroupParent = this.original.parentNode;
-      // Insert visual after original (dalam input-group)
+      const inputGroupGrandparent = inputGroupParent.parentNode;
+      
+      // Step 1: Insert visual after original (dalam input-group)
       inputGroupParent.insertBefore(this.visual, this.original.nextSibling);
-      // Move original outside input-group (after input-group parent)
-      inputGroupParent.parentNode?.insertBefore(this.original, inputGroupParent.nextSibling);
+      
+      // Step 2: Move original to after input-group parent (keluar dari input-group)
+      if (inputGroupGrandparent) {
+        inputGroupGrandparent.insertBefore(this.original, inputGroupParent.nextSibling);
+      }
     } else {
       // Standard insertion
       this.original.parentNode.insertBefore(this.visual, this.original.nextSibling);

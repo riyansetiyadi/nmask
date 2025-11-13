@@ -114,12 +114,22 @@
 
       // Insert visual input - handle input-group differently
       if (this.isInputGroup) {
-        // For input-group: save reference to input-group parent first
         const inputGroupParent = this.original.parentNode;
-        // Insert visual after original (dalam input-group)
+        const inputGroupGrandparent = inputGroupParent.parentNode;
+        
+        console.log('DEBUG: Input-group detected');
+        console.log('Before - original parent:', this.original.parentNode.className);
+        console.log('Before - visual parent:', this.visual.parentNode);
+        
+        // Step 1: Insert visual after original (dalam input-group)
         inputGroupParent.insertBefore(this.visual, this.original.nextSibling);
-        // Move original outside input-group (after input-group parent)
-        inputGroupParent.parentNode?.insertBefore(this.original, inputGroupParent.nextSibling);
+        console.log('After Step 1 - visual in input-group:', this.visual.parentNode === inputGroupParent);
+        
+        // Step 2: Move original to after input-group parent (keluar dari input-group)
+        if (inputGroupGrandparent) {
+          inputGroupGrandparent.insertBefore(this.original, inputGroupParent.nextSibling);
+          console.log('After Step 2 - original out of input-group:', this.original.parentNode === inputGroupGrandparent);
+        }
       } else {
         // Standard insertion
         this.original.parentNode.insertBefore(this.visual, this.original.nextSibling);
