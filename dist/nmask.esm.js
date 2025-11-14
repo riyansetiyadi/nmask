@@ -43,6 +43,12 @@ class Nmask {
   }
 
   initInput() {
+    // Guard: if visual already exists, skip re-initialization
+    if (this.visual) {
+      console.log('DEBUG: Visual input already exists, skipping re-initialization');
+      return;
+    }
+
     const inputMode = this.options.decimalDigits > 0 ? 'decimal' : 'numeric';
     
     // Check if parent is input-group (Bootstrap) - CRITICAL: check BEFORE any DOM manipulation
@@ -218,6 +224,14 @@ class Nmask {
     const val = this.visual.value;
     const cursorPos = this.visual.selectionStart;
 
+    // DEBUG: Log decimal separator detection
+    console.log('DEBUG handleInput:');
+    console.log('  - visual.value:', val);
+    console.log('  - cursorPos:', cursorPos);
+    console.log('  - decimalSeparator:', this.options.decimalSeparator);
+    console.log('  - char at cursorPos-1:', val.charAt(cursorPos - 1));
+    console.log('  - justTypedDecimal check:', val.charAt(cursorPos - 1) === this.options.decimalSeparator);
+
     // Detect decimal separator conditions
     const justTypedDecimal = val.charAt(cursorPos - 1) === this.options.decimalSeparator;
     const isTypingAfterDecimal = val.charAt(cursorPos - 2) === this.options.decimalSeparator;
@@ -365,6 +379,8 @@ class Nmask {
   cleanNumber(val) {
     if (!val) return '';
 
+    console.log('DEBUG cleanNumber - INPUT:', val);
+
     // Remove prefix and suffix
     if (this.options.prefix) {
       val = val.replace(new RegExp('^' + this.escapeRegExp(this.options.prefix)), '');
@@ -372,6 +388,8 @@ class Nmask {
     if (this.options.suffix) {
       val = val.replace(new RegExp(this.escapeRegExp(this.options.suffix) + '$'), '');
     }
+
+    console.log('DEBUG cleanNumber - after prefix/suffix removal:', val);
 
     // Remove thousand separators
     if (this.options.thousandsSeparator) {
@@ -389,7 +407,9 @@ class Nmask {
       'g'
     );
 
+    console.log('DEBUG cleanNumber - decimalRegex:', decimalRegex);
     val = val.replace(decimalRegex, '');
+    console.log('DEBUG cleanNumber - after decimalRegex:', val);
 
     // Handle multiple decimal separators
     const parts = val.split(this.options.decimalSeparator);
@@ -402,6 +422,7 @@ class Nmask {
       val = val.replace(this.options.decimalSeparator, '.');
     }
 
+    console.log('DEBUG cleanNumber - FINAL OUTPUT:', val);
     return val;
   }
 
