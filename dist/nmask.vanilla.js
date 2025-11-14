@@ -401,15 +401,8 @@
 
       console.log('DEBUG cleanNumber - after prefix/suffix removal:', val);
 
-      // Remove thousand separators
-      if (this.options.thousandsSeparator) {
-        val = val.replace(
-          new RegExp(this.escapeRegExp(this.options.thousandsSeparator), 'g'),
-          ''
-        );
-      }
-
-      // Create decimal regex
+      // IMPORTANT: Create decimal regex BEFORE removing thousand separators
+      // This way we can preserve decimal separator while removing other non-numeric chars
       const decimalRegex = new RegExp(
         `[^0-9${this.options.allowNegative ? '\\-' : ''}${this.escapeRegExp(
           this.options.decimalSeparator
@@ -418,8 +411,19 @@
       );
 
       console.log('DEBUG cleanNumber - decimalRegex:', decimalRegex);
+      
+      // Apply decimal regex to remove unwanted chars BEFORE removing thousand separator
       val = val.replace(decimalRegex, '');
       console.log('DEBUG cleanNumber - after decimalRegex:', val);
+
+      // Now remove thousand separators (only if it's different from decimal separator)
+      if (this.options.thousandsSeparator && this.options.thousandsSeparator !== this.options.decimalSeparator) {
+        val = val.replace(
+          new RegExp(this.escapeRegExp(this.options.thousandsSeparator), 'g'),
+          ''
+        );
+        console.log('DEBUG cleanNumber - after removing thousands separator:', val);
+      }
 
       // Handle multiple decimal separators
       const parts = val.split(this.options.decimalSeparator);

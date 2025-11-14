@@ -189,22 +189,6 @@
 
       // Remove prefix and suffix first
       if (settings.prefix) {
-        val = val.replace(new RegExp(escapeRegExp(settings.prefix), "g"), "");
-      }
-      if (settings.suffix) {
-        val = val.replace(new RegExp(escapeRegExp(settings.suffix), "g"), "");
-      }
-
-      // Remove thousand separators
-      if (settings.thousandsSeparator) {
-        val = val.replace(
-          new RegExp(escapeRegExp(settings.thousandsSeparator), "g"),
-          ""
-        );
-      }
-
-      // First remove any prefix/suffix to avoid interfering with decimal validation
-      if (settings.prefix) {
         val = val.replace(new RegExp("^" + escapeRegExp(settings.prefix)), "");
       }
       if (settings.suffix) {
@@ -212,6 +196,7 @@
       }
 
       // Create a regex that allows decimal separator (whether it's . or ,)
+      // Do this BEFORE removing thousand separators to preserve decimal separator
       const decimalRegex = new RegExp(
         `[^0-9${settings.allowNegative ? "\\-" : ""}${escapeRegExp(
           settings.decimalSeparator
@@ -221,6 +206,14 @@
 
       // Clean the value but preserve the decimal separator
       val = val.replace(decimalRegex, "");
+
+      // Now remove thousand separators (only if it's different from decimal separator)
+      if (settings.thousandsSeparator && settings.thousandsSeparator !== settings.decimalSeparator) {
+        val = val.replace(
+          new RegExp(escapeRegExp(settings.thousandsSeparator), "g"),
+          ""
+        );
+      }
 
       // Handle multiple decimal separators - keep only the first one
       const parts = val.split(settings.decimalSeparator);
