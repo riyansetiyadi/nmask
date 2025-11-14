@@ -55,7 +55,6 @@
     initInput() {
       // Guard: if visual already exists, skip re-initialization
       if (this.visual) {
-        console.log('DEBUG: Visual input already exists, skipping re-initialization');
         return;
       }
 
@@ -64,13 +63,6 @@
       // Check if parent is input-group (Bootstrap) - CRITICAL: check BEFORE any DOM manipulation
       const parentElement = this.original.parentElement;
       const hasInputGroupParent = parentElement && parentElement.classList.contains('input-group');
-      
-      console.log('DEBUG initInput:');
-      console.log('  - original:', this.original);
-      console.log('  - parentElement:', parentElement);
-      console.log('  - parentElement className:', parentElement?.className);
-      console.log('  - hasInputGroupParent:', hasInputGroupParent);
-      console.log('  - Storing for later use: this.isInputGroup =', hasInputGroupParent);
       
       this.isInputGroup = hasInputGroupParent;
       this.inputGroupParent = hasInputGroupParent ? parentElement : null;
@@ -234,14 +226,6 @@
       const val = this.visual.value;
       const cursorPos = this.visual.selectionStart;
 
-      // DEBUG: Log decimal separator detection
-      console.log('DEBUG handleInput:');
-      console.log('  - visual.value:', val);
-      console.log('  - cursorPos:', cursorPos);
-      console.log('  - decimalSeparator:', this.options.decimalSeparator);
-      console.log('  - char at cursorPos-1:', val.charAt(cursorPos - 1));
-      console.log('  - justTypedDecimal check:', val.charAt(cursorPos - 1) === this.options.decimalSeparator);
-
       // Detect decimal separator conditions
       const justTypedDecimal = val.charAt(cursorPos - 1) === this.options.decimalSeparator;
       const isTypingAfterDecimal = val.charAt(cursorPos - 2) === this.options.decimalSeparator;
@@ -389,8 +373,6 @@
     cleanNumber(val) {
       if (!val) return '';
 
-      console.log('DEBUG cleanNumber - INPUT:', val);
-
       // Remove prefix and suffix
       if (this.options.prefix) {
         val = val.replace(new RegExp('^' + this.escapeRegExp(this.options.prefix)), '');
@@ -398,8 +380,6 @@
       if (this.options.suffix) {
         val = val.replace(new RegExp(this.escapeRegExp(this.options.suffix) + '$'), '');
       }
-
-      console.log('DEBUG cleanNumber - after prefix/suffix removal:', val);
 
       // IMPORTANT: Create decimal regex BEFORE removing thousand separators
       // This way we can preserve decimal separator while removing other non-numeric chars
@@ -409,12 +389,9 @@
         )}]`,
         'g'
       );
-
-      console.log('DEBUG cleanNumber - decimalRegex:', decimalRegex);
       
       // Apply decimal regex to remove unwanted chars BEFORE removing thousand separator
       val = val.replace(decimalRegex, '');
-      console.log('DEBUG cleanNumber - after decimalRegex:', val);
 
       // Now remove thousand separators (only if it's different from decimal separator)
       if (this.options.thousandsSeparator && this.options.thousandsSeparator !== this.options.decimalSeparator) {
@@ -422,7 +399,6 @@
           new RegExp(this.escapeRegExp(this.options.thousandsSeparator), 'g'),
           ''
         );
-        console.log('DEBUG cleanNumber - after removing thousands separator:', val);
       }
 
       // Handle multiple decimal separators
@@ -436,7 +412,6 @@
         val = val.replace(this.options.decimalSeparator, '.');
       }
 
-      console.log('DEBUG cleanNumber - FINAL OUTPUT:', val);
       return val;
     }
 
