@@ -373,7 +373,7 @@
       let result = (isNegative ? '-' : '') + this.options.prefix + intPart;
 
       if (this.options.decimalDigits > 0) {
-        if (preserveDecimalSeparator && value.toString().endsWith(this.options.decimalSeparator)) {
+        if (preserveDecimalSeparator && value.toString().endsWith('.')) {
           result += this.options.decimalSeparator;
         } else if (decPart !== undefined) {
           decPart = (decPart || '').slice(0, this.options.decimalDigits);

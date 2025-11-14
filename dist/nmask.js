@@ -151,6 +151,7 @@
     const formatNumber = (value, preserveDecimalSeparator = false) => {
       if (!value && value !== "0") return "";
       
+      // Input value is always in internal format (with dot as decimal separator)
       let num = value.toString().replace(/[^0-9\-\.]/g, "");
       let isNegative = value.toString().startsWith("-");
       if (isNegative) num = num.substring(1);
@@ -171,7 +172,7 @@
       let result = (isNegative ? "-" : "") + settings.prefix + intPart;
 
       if (settings.decimalDigits > 0) {
-        if (preserveDecimalSeparator && value.toString().endsWith(settings.decimalSeparator)) {
+        if (preserveDecimalSeparator && value.toString().endsWith(".")) {
           result += settings.decimalSeparator;
         } else if (decPart !== undefined) {
           decPart = (decPart || "").slice(0, settings.decimalDigits);
