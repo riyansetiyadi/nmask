@@ -277,6 +277,19 @@
           if ($original.prop(prop)) $visual.prop(prop, $original.prop(prop));
         });
 
+        // Copy all data-* DOM attributes (except internal nmask-* attributes) to visual
+        const originalEl = $original[0];
+        if (originalEl && originalEl.attributes) {
+          const attrs = originalEl.attributes;
+          for (let i = 0; i < attrs.length; i++) {
+            const attrName = attrs[i].name;
+            const lowerName = attrName.toLowerCase();
+            if (lowerName.startsWith("data-") && !lowerName.startsWith("data-nmask-")) {
+              $visual.attr(attrName, attrs[i].value);
+            }
+          }
+        }
+
         // Copy all data from original to visual (including custom data-*).
         // We'll remove internal nmask keys from the visual afterwards so
         // visual doesn't accidentally appear as the nmask source.

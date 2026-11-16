@@ -105,6 +105,18 @@
         this.visual.setAttribute('style', this.original.getAttribute('style'));
       }
 
+      // Copy data-* attributes (excluding internal nmask-* attributes)
+      if (this.original.attributes) {
+        const attrs = this.original.attributes;
+        for (let i = 0; i < attrs.length; i++) {
+          const attrName = attrs[i].name;
+          const lowerName = attrName.toLowerCase();
+          if (lowerName.startsWith('data-') && !lowerName.startsWith('data-nmask-')) {
+            this.visual.setAttribute(attrName, attrs[i].value);
+          }
+        }
+      }
+
       // Store references
       this.original.dataset.nmaskVisual = 'true';
       this.original.dataset.nmaskOriginal = 'true';
