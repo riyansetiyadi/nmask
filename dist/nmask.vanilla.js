@@ -14,6 +14,8 @@
 (function (global) {
   'use strict';
 
+  const instanceMap = new WeakMap();
+
   /**
    * Main Nmask class for vanilla JS
    */
@@ -41,6 +43,7 @@
       }
 
       this.original.dataset.nmaskActive = 'true';
+      instanceMap.set(this.original, this);
       this.init();
     }
 
@@ -184,9 +187,11 @@
       // Attach form handler if parent is form
       const form = this.original.closest('form');
       if (form) {
-        form.addEventListener('submit', () => {
+        this._form = form;
+        this._submitHandler = () => {
           this.hidden.value = this.cleanNumber(this.original.textContent);
-        });
+        };
+        form.addEventListener('submit', this._submitHandler);
       }
     }
 
@@ -202,8 +207,9 @@
       this.visual.addEventListener('input', (e) => this.handleInput());
 
       // Sync from original
-      this.original.addEventListener('input', () => this.syncFromOriginal());
-      this.original.addEventListener('change', () => this.syncFromOriginal());
+      this._syncHandler = () => this.syncFromOriginal();
+      this.original.addEventListener('input', this._syncHandler);
+      this.original.addEventListener('change', this._syncHandler);
     }
 
     restrictCursor() {
@@ -454,7 +460,16 @@
 
     destroy() {
       if (this.isInput && this.visual) {
+        if (this.isInputGroup && this.visual.parentNode) {
+          this.visual.parentNode.insertBefore(this.original, this.visual);
+        }
         this.visual.remove();
+        this.visual = null;
+        if (this._syncHandler) {
+          this.original.removeEventListener('input', this._syncHandler);
+          this.original.removeEventListener('change', this._syncHandler);
+          this._syncHandler = null;
+        }
         this.original.style.opacity = '';
         this.original.style.width = '';
         this.original.style.height = '';
@@ -464,10 +479,19 @@
         this.original.style.minWidth = '';
         this.original.style.minHeight = '';
         this.original.removeAttribute('tabindex');
+        this.original.removeAttribute('step');
       } else if (this.hidden) {
         this.hidden.remove();
+        this.hidden = null;
       }
 
+      if (this._form && this._submitHandler) {
+        this._form.removeEventListener('submit', this._submitHandler);
+        this._form = null;
+        this._submitHandler = null;
+      }
+
+      instanceMap.delete(this.original);
       delete this.original.dataset.nmaskActive;
       delete this.original.dataset.nmaskOriginal;
       delete this.original.dataset.nmaskVisual;
@@ -482,10 +506,14 @@
   }
 
   function nmaskDestroy(element) {
-    if (element.dataset.nmaskActive) {
-      // Find the nmask instance and destroy it
-      const nmask = new Nmask(element);
-      nmask.destroy();
+    if (!element) return;
+    const instance = instanceMap.get(element);
+    if (instance) {
+      instance.destroy();
+    } else if (element.dataset && element.dataset.nmaskActive) {
+      delete element.dataset.nmaskActive;
+      delete element.dataset.nmaskOriginal;
+      delete element.dataset.nmaskVisual;
     }
   }
 

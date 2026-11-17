@@ -174,9 +174,11 @@ class Nmask {
     // Attach form handler if parent is form
     const form = this.original.closest('form');
     if (form) {
-      form.addEventListener('submit', () => {
+      this._form = form;
+      this._submitHandler = () => {
         this.hidden.value = this.cleanNumber(this.original.textContent);
-      });
+      };
+      form.addEventListener('submit', this._submitHandler);
     }
   }
 
@@ -192,8 +194,9 @@ class Nmask {
     this.visual.addEventListener('input', (e) => this.handleInput());
 
     // Sync from original
-    this.original.addEventListener('input', () => this.syncFromOriginal());
-    this.original.addEventListener('change', () => this.syncFromOriginal());
+    this._syncHandler = () => this.syncFromOriginal();
+    this.original.addEventListener('input', this._syncHandler);
+    this.original.addEventListener('change', this._syncHandler);
   }
 
   restrictCursor() {
@@ -444,7 +447,16 @@ class Nmask {
 
   destroy() {
     if (this.isInput && this.visual) {
+      if (this.isInputGroup && this.visual.parentNode) {
+        this.visual.parentNode.insertBefore(this.original, this.visual);
+      }
       this.visual.remove();
+      this.visual = null;
+      if (this._syncHandler) {
+        this.original.removeEventListener('input', this._syncHandler);
+        this.original.removeEventListener('change', this._syncHandler);
+        this._syncHandler = null;
+      }
       this.original.style.opacity = '';
       this.original.style.width = '';
       this.original.style.height = '';
@@ -454,8 +466,16 @@ class Nmask {
       this.original.style.minWidth = '';
       this.original.style.minHeight = '';
       this.original.removeAttribute('tabindex');
+      this.original.removeAttribute('step');
     } else if (this.hidden) {
       this.hidden.remove();
+      this.hidden = null;
+    }
+
+    if (this._form && this._submitHandler) {
+      this._form.removeEventListener('submit', this._submitHandler);
+      this._form = null;
+      this._submitHandler = null;
     }
 
     delete this.original.dataset.nmaskActive;
