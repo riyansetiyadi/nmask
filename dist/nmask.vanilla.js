@@ -94,7 +94,7 @@
       }
 
       // Copy properties
-      ['readonly', 'disabled', 'required'].forEach(prop => {
+      ['readOnly', 'disabled', 'required'].forEach(prop => {
         if (this.original[prop]) {
           this.visual[prop] = this.original[prop];
         }
