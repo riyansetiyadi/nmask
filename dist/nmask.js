@@ -150,14 +150,12 @@
 
     const formatNumber = (value, preserveDecimalSeparator = false) => {
       if (!value && value !== "0") return "";
+      if (value === "-") return settings.allowNegative ? settings.prefix + "-" : "";
       
       // Input value is always in internal format (with dot as decimal separator)
       let num = value.toString().replace(/[^0-9\-\.]/g, "");
       let isNegative = value.toString().startsWith("-");
       if (isNegative) num = num.substring(1);
-      
-      // Special handling for decimal point
-      const endsWithDecimal = preserveDecimalSeparator && value.toString().endsWith(".");
 
       let [intPart, decPart] = num.split(".");
       intPart = intPart || "0"; // Use "0" if intPart is empty
@@ -169,7 +167,7 @@
         settings.thousandsSeparator
       );
 
-      let result = (isNegative ? "-" : "") + settings.prefix + intPart;
+      let result = settings.prefix + (isNegative ? "-" : "") + intPart;
 
       if (settings.decimalDigits > 0) {
         if (preserveDecimalSeparator && value.toString().endsWith(".")) {
@@ -188,29 +186,21 @@
     const cleanNumber = (val) => {
       if (!val) return "";
 
-      // Remove prefix and suffix first
-      if (settings.prefix) {
-        val = val.replace(new RegExp(escapeRegExp(settings.prefix), "g"), "");
-      }
-      if (settings.suffix) {
-        val = val.replace(new RegExp(escapeRegExp(settings.suffix), "g"), "");
-      }
-
-      // Remove thousand separators (only if different from decimal separator)
-      if (settings.thousandsSeparator && settings.thousandsSeparator !== settings.decimalSeparator) {
-        val = val.replace(
-          new RegExp(escapeRegExp(settings.thousandsSeparator), "g"),
-          ""
-        );
+      // Support pasted values formatted with "-" before prefix (e.g. "-Rp 1.500")
+      let leadingNeg = "";
+      if (settings.allowNegative && settings.prefix && val.startsWith("-" + settings.prefix)) {
+        leadingNeg = "-";
+        val = val.slice(1 + settings.prefix.length);
       }
 
-      // First remove any prefix/suffix to avoid interfering with decimal validation
+      // Remove prefix and suffix before numeric validation
       if (settings.prefix) {
         val = val.replace(new RegExp("^" + escapeRegExp(settings.prefix)), "");
       }
       if (settings.suffix) {
         val = val.replace(new RegExp(escapeRegExp(settings.suffix) + "$"), "");
       }
+      val = leadingNeg + val;
 
       // Create a regex that allows decimal separator (whether it's . or ,)
       const decimalRegex = new RegExp(
@@ -220,8 +210,25 @@
         "g"
       );
 
-      // Clean the value but preserve the decimal separator
+      // Clean unwanted chars BEFORE removing thousand separator
       val = val.replace(decimalRegex, "");
+
+      // Remove thousand separators (only if different from decimal separator)
+      if (settings.thousandsSeparator && settings.thousandsSeparator !== settings.decimalSeparator) {
+        val = val.replace(
+          new RegExp(escapeRegExp(settings.thousandsSeparator), "g"),
+          ""
+        );
+      }
+
+      // Normalize minus sign: allow at most one leading "-"
+      if (settings.allowNegative) {
+        const isNegative = val.startsWith("-");
+        val = val.replace(/-/g, "");
+        if (isNegative) {
+          val = "-" + val;
+        }
+      }
 
       // Handle multiple decimal separators - keep only the first one
       const parts = val.split(settings.decimalSeparator);
@@ -383,11 +390,28 @@
           }
         };
 
+        $visual.on("blur.nmask", function () {
+          if (cleanNumber($(this).val()) === "-") {
+            $original.val("");
+            $(this).val("");
+            triggerOriginalEvents();
+          }
+        });
+
         $visual.on("input.nmask", function (e) {
           let val = $(this).val();
           const cursorPos = this.selectionStart;
 
           let cleanVal = cleanNumber(val);
+
+          if (cleanVal === "-") {
+            const visualNeg = settings.prefix + "-";
+            $original.val("");
+            $(this).val(visualNeg);
+            this.setSelectionRange(visualNeg.length, visualNeg.length);
+            triggerOriginalEvents();
+            return;
+          }
 
           if (cleanVal || cleanVal === "0") {
             let parts = cleanVal.split(".");
@@ -400,24 +424,25 @@
             const relativePos = cleanBefore.length;
 
             let originalVal, visualVal;
+            const safeInt = intPart === "-" ? "-0" : intPart;
 
             if (settings.decimalDigits > 0) {
               decPart = decPart.slice(0, settings.decimalDigits);
               
               // Handle the case where we just typed a decimal separator
               if (val.charAt(cursorPos - 1) === settings.decimalSeparator) {
-                originalVal = $original[0].type === "number" ? intPart : intPart + ".";
-                visualVal = formatNumber(intPart + ".", true);
+                originalVal = $original[0].type === "number" ? safeInt : safeInt + ".";
+                visualVal = formatNumber(safeInt + ".", true);
               } else {
-                originalVal = decPart.length > 0 ? intPart + "." + decPart : intPart;
+                originalVal = decPart.length > 0 ? safeInt + "." + decPart : safeInt;
 
                 // Preserve decimal separator if it exists in the input
                 const hasDecimal = val.includes(settings.decimalSeparator);
                 visualVal = formatNumber(originalVal, hasDecimal);
               }
             } else {
-              originalVal = intPart;
-              visualVal = formatNumber(intPart);
+              originalVal = safeInt;
+              visualVal = formatNumber(safeInt);
             }
 
             // Set values

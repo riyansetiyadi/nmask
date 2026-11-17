@@ -191,6 +191,9 @@ class Nmask {
     // Handle selection
     this.visual.addEventListener('mouseup', () => this.handleSelection());
 
+    // Clear dangling minus sign on blur
+    this.visual.addEventListener('blur', () => this.handleBlur());
+
     // Main input handler
     this.visual.addEventListener('input', () => this.handleInput());
 
@@ -207,6 +210,14 @@ class Nmask {
       this.original.dispatchEvent(new Event('change', { bubbles: true }));
     } finally {
       this.isInternalSync = false;
+    }
+  }
+
+  handleBlur() {
+    if (this.cleanNumber(this.visual.value) === '-') {
+      this.original.value = '';
+      this.visual.value = '';
+      this.triggerOriginalEvents();
     }
   }
 
@@ -245,6 +256,15 @@ class Nmask {
 
     let cleanVal = this.cleanNumber(val);
 
+    if (cleanVal === '-') {
+      const visualNeg = this.options.prefix + '-';
+      this.original.value = '';
+      this.visual.value = visualNeg;
+      this.visual.setSelectionRange(visualNeg.length, visualNeg.length);
+      this.triggerOriginalEvents();
+      return;
+    }
+
     if (cleanVal || cleanVal === '0') {
       const parts = cleanVal.split('.');
       let intPart = parts[0].replace(/^(-)?0+(?=\d)/, '$1') || '0';
@@ -256,21 +276,22 @@ class Nmask {
       const relativePos = cleanBefore.length;
 
       let originalVal, visualVal;
+      const safeInt = intPart === '-' ? '-0' : intPart;
 
       if (this.options.decimalDigits > 0) {
         decPart = decPart.slice(0, this.options.decimalDigits);
 
         if (val.charAt(cursorPos - 1) === this.options.decimalSeparator) {
-          originalVal = this.original.type === 'number' ? intPart : intPart + '.';
-          visualVal = this.formatNumber(intPart + '.', true);
+          originalVal = this.original.type === 'number' ? safeInt : safeInt + '.';
+          visualVal = this.formatNumber(safeInt + '.', true);
         } else {
-          originalVal = decPart.length > 0 ? intPart + '.' + decPart : intPart;
+          originalVal = decPart.length > 0 ? safeInt + '.' + decPart : safeInt;
           const hasDecimal = val.includes(this.options.decimalSeparator);
           visualVal = this.formatNumber(originalVal, hasDecimal);
         }
       } else {
-        originalVal = intPart;
-        visualVal = this.formatNumber(intPart);
+        originalVal = safeInt;
+        visualVal = this.formatNumber(safeInt);
       }
 
       // Set values
@@ -337,12 +358,11 @@ class Nmask {
 
   formatNumber(value, preserveDecimalSeparator = false) {
     if (!value && value !== '0') return '';
+    if (value === '-') return this.options.allowNegative ? this.options.prefix + '-' : '';
 
     let num = value.toString().replace(/[^0-9\-\.]/g, '');
     let isNegative = value.toString().startsWith('-');
     if (isNegative) num = num.substring(1);
-
-    const endsWithDecimal = preserveDecimalSeparator && value.toString().endsWith('.');
 
     let [intPart, decPart] = num.split('.');
     intPart = intPart || '0';
@@ -354,7 +374,7 @@ class Nmask {
       this.options.thousandsSeparator
     );
 
-    let result = (isNegative ? '-' : '') + this.options.prefix + intPart;
+    let result = this.options.prefix + (isNegative ? '-' : '') + intPart;
 
       if (this.options.decimalDigits > 0) {
         if (preserveDecimalSeparator && value.toString().endsWith('.')) {
@@ -373,6 +393,13 @@ class Nmask {
   cleanNumber(val) {
     if (!val) return '';
 
+    // Support pasted values formatted with "-" before prefix (e.g. "-Rp 1.500")
+    let leadingNeg = '';
+    if (this.options.allowNegative && this.options.prefix && val.startsWith('-' + this.options.prefix)) {
+      leadingNeg = '-';
+      val = val.slice(1 + this.options.prefix.length);
+    }
+
     // Remove prefix and suffix
     if (this.options.prefix) {
       val = val.replace(new RegExp('^' + this.escapeRegExp(this.options.prefix)), '');
@@ -380,6 +407,7 @@ class Nmask {
     if (this.options.suffix) {
       val = val.replace(new RegExp(this.escapeRegExp(this.options.suffix) + '$'), '');
     }
+    val = leadingNeg + val;
 
     // IMPORTANT: Create decimal regex BEFORE removing thousand separators
     // This way we can preserve decimal separator while removing other non-numeric chars
@@ -399,6 +427,15 @@ class Nmask {
         new RegExp(this.escapeRegExp(this.options.thousandsSeparator), 'g'),
         ''
       );
+    }
+
+    // Normalize minus sign: allow at most one leading "-"
+    if (this.options.allowNegative) {
+      const isNegative = val.startsWith('-');
+      val = val.replace(/-/g, '');
+      if (isNegative) {
+        val = '-' + val;
+      }
     }
 
     // Handle multiple decimal separators
