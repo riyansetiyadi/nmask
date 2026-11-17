@@ -329,21 +329,34 @@
         });
         $original.attr("tabindex", -1);
 
-        // Add mouseup event to handle selection
-        $visual.on("mouseup.nmask", function(e) {
-          const selectionStart = this.selectionStart;
-          const selectionEnd = this.selectionEnd;
-          const val = $(this).val();
-          const prefixLen = settings.prefix ? settings.prefix.length : 0;
-          const suffixLen = settings.suffix ? settings.suffix.length : 0;
-          const valueEndPos = val.length - suffixLen;
+        const restrictCursorPosition = function(input) {
+          const val = input.value;
+          if (!val) return;
 
-          // If selection includes prefix or suffix, adjust it
-          if (selectionStart < prefixLen || selectionEnd > valueEndPos) {
-            const newStart = Math.max(selectionStart, prefixLen);
-            const newEnd = Math.min(selectionEnd, valueEndPos);
-            this.setSelectionRange(newStart, newEnd);
+          const selStart = input.selectionStart;
+          const selEnd = input.selectionEnd;
+          if (selStart === null || selEnd === null) return;
+
+          const hasPrefix = settings.prefix && val.startsWith(settings.prefix);
+          const hasSuffix = settings.suffix && val.endsWith(settings.suffix);
+          const minPos = hasPrefix ? settings.prefix.length : 0;
+          const maxPos = Math.max(minPos, val.length - (hasSuffix ? settings.suffix.length : 0));
+
+          const newStart = Math.min(Math.max(selStart, minPos), maxPos);
+          const newEnd = Math.max(newStart, Math.min(selEnd, maxPos));
+
+          if (newStart !== selStart || newEnd !== selEnd) {
+            if (input.selectionDirection === "backward") {
+              input.setSelectionRange(newStart, newEnd, "backward");
+            } else {
+              input.setSelectionRange(newStart, newEnd);
+            }
           }
+        };
+
+        // Add mouseup, click, and keyup handlers to restrict cursor and selection to number bounds
+        $visual.on("mouseup.nmask click.nmask keyup.nmask", function() {
+          restrictCursorPosition(this);
         });
 
         if ($original.parent().hasClass("input-group")) {
@@ -359,35 +372,20 @@
         $visual.val(formatNumber($original.val()));
         $original.attr("step", "any");
 
-        const restrictCursorPosition = function(input) {
-          const val = input.value;
-          const cursorPos = input.selectionStart;
-          const prefixLen = settings.prefix ? settings.prefix.length : 0;
-          const suffixLen = settings.suffix ? settings.suffix.length : 0;
-          const valueEndPos = val.length - suffixLen;
-
-          // If cursor is in prefix area
-          if (cursorPos < prefixLen) {
-            input.setSelectionRange(prefixLen, prefixLen);
-          }
-          // If cursor is in suffix area
-          else if (cursorPos > valueEndPos) {
-            input.setSelectionRange(valueEndPos, valueEndPos);
+        let isInternalSync = false;
+        const triggerOriginalEvents = () => {
+          isInternalSync = true;
+          try {
+            $original.trigger("input");
+            $original.trigger("change");
+          } finally {
+            isInternalSync = false;
           }
         };
-
-        // Add click and keyup handlers to restrict cursor
-        $visual.on("click.nmask keyup.nmask", function() {
-          restrictCursorPosition(this);
-        });
 
         $visual.on("input.nmask", function (e) {
           let val = $(this).val();
           const cursorPos = this.selectionStart;
-
-          // Detect decimal separator related conditions early
-          const justTypedDecimal = val.charAt(cursorPos - 1) === settings.decimalSeparator;
-          const isTypingAfterDecimal = val.charAt(cursorPos - 2) === settings.decimalSeparator;
 
           let cleanVal = cleanNumber(val);
 
@@ -408,11 +406,11 @@
               
               // Handle the case where we just typed a decimal separator
               if (val.charAt(cursorPos - 1) === settings.decimalSeparator) {
-                originalVal = intPart + ".";
-                visualVal = formatNumber(originalVal, true);
+                originalVal = $original[0].type === "number" ? intPart : intPart + ".";
+                visualVal = formatNumber(intPart + ".", true);
               } else {
                 originalVal = decPart.length > 0 ? intPart + "." + decPart : intPart;
-                
+
                 // Preserve decimal separator if it exists in the input
                 const hasDecimal = val.includes(settings.decimalSeparator);
                 visualVal = formatNumber(originalVal, hasDecimal);
@@ -442,6 +440,7 @@
               const newDecimalIndex = newVal.indexOf(settings.decimalSeparator);
               if (newDecimalIndex !== -1) {
                 this.setSelectionRange(newDecimalIndex + 1, newDecimalIndex + 1);
+                triggerOriginalEvents();
                 return;
               }
             }
@@ -465,22 +464,26 @@
             // Set cursor position
             this.setSelectionRange(newPos, newPos);
 
-            $original.trigger("input");
+            triggerOriginalEvents();
           } else {
             $original.val("");
             $visual.val("");
-            $original.trigger("input");
+            triggerOriginalEvents();
           }
-          $original.trigger("change");
         });
 
         const syncFromOriginal = () => {
+          if (isInternalSync) return;
           const originalVal = $original.val();
           const visualVal = $visual.val();
+          const visualNoSuffix =
+            settings.suffix && visualVal && visualVal.endsWith(settings.suffix)
+              ? visualVal.slice(0, -settings.suffix.length)
+              : visualVal;
           const endsWithDecimalOnly =
             settings.decimalDigits > 0 &&
-            visualVal &&
-            visualVal.endsWith(settings.decimalSeparator);
+            visualNoSuffix &&
+            visualNoSuffix.endsWith(settings.decimalSeparator);
 
           if (!endsWithDecimalOnly) {
             $visual.val(formatNumber(originalVal));

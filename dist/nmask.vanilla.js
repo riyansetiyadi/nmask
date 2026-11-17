@@ -27,6 +27,7 @@
 
       this.original = element;
       this.isInput = element.tagName === 'INPUT';
+      this.isInternalSync = false;
       this.options = {
         thousandsSeparator: '.',
         decimalSeparator: ',',
@@ -201,10 +202,10 @@
       this.visual.addEventListener('keyup', () => this.restrictCursor());
       
       // Handle selection
-      this.visual.addEventListener('mouseup', (e) => this.handleSelection());
+      this.visual.addEventListener('mouseup', () => this.handleSelection());
 
       // Main input handler
-      this.visual.addEventListener('input', (e) => this.handleInput());
+      this.visual.addEventListener('input', () => this.handleInput());
 
       // Sync from original
       this._syncHandler = () => this.syncFromOriginal();
@@ -212,41 +213,48 @@
       this.original.addEventListener('change', this._syncHandler);
     }
 
-    restrictCursor() {
-      const cursorPos = this.visual.selectionStart;
-      const prefixLen = this.options.prefix.length;
-      const suffixLen = this.options.suffix.length;
-      const valueEndPos = this.visual.value.length - suffixLen;
+    triggerOriginalEvents() {
+      this.isInternalSync = true;
+      try {
+        this.original.dispatchEvent(new Event('input', { bubbles: true }));
+        this.original.dispatchEvent(new Event('change', { bubbles: true }));
+      } finally {
+        this.isInternalSync = false;
+      }
+    }
 
-      if (cursorPos < prefixLen) {
-        this.visual.setSelectionRange(prefixLen, prefixLen);
-      } else if (cursorPos > valueEndPos) {
-        this.visual.setSelectionRange(valueEndPos, valueEndPos);
+    restrictCursor() {
+      const val = this.visual.value;
+      if (!val) return;
+
+      const selStart = this.visual.selectionStart;
+      const selEnd = this.visual.selectionEnd;
+      if (selStart === null || selEnd === null) return;
+
+      const hasPrefix = this.options.prefix && val.startsWith(this.options.prefix);
+      const hasSuffix = this.options.suffix && val.endsWith(this.options.suffix);
+      const minPos = hasPrefix ? this.options.prefix.length : 0;
+      const maxPos = Math.max(minPos, val.length - (hasSuffix ? this.options.suffix.length : 0));
+
+      const newStart = Math.min(Math.max(selStart, minPos), maxPos);
+      const newEnd = Math.max(newStart, Math.min(selEnd, maxPos));
+
+      if (newStart !== selStart || newEnd !== selEnd) {
+        if (this.visual.selectionDirection === 'backward') {
+          this.visual.setSelectionRange(newStart, newEnd, 'backward');
+        } else {
+          this.visual.setSelectionRange(newStart, newEnd);
+        }
       }
     }
 
     handleSelection() {
-      const selStart = this.visual.selectionStart;
-      const selEnd = this.visual.selectionEnd;
-      const val = this.visual.value;
-      const prefixLen = this.options.prefix.length;
-      const suffixLen = this.options.suffix.length;
-      const valueEndPos = val.length - suffixLen;
-
-      if (selStart < prefixLen || selEnd > valueEndPos) {
-        const newStart = Math.max(selStart, prefixLen);
-        const newEnd = Math.min(selEnd, valueEndPos);
-        this.visual.setSelectionRange(newStart, newEnd);
-      }
+      this.restrictCursor();
     }
 
     handleInput() {
       const val = this.visual.value;
       const cursorPos = this.visual.selectionStart;
-
-      // Detect decimal separator conditions
-      const justTypedDecimal = val.charAt(cursorPos - 1) === this.options.decimalSeparator;
-      const isTypingAfterDecimal = val.charAt(cursorPos - 2) === this.options.decimalSeparator;
 
       let cleanVal = this.cleanNumber(val);
 
@@ -266,8 +274,8 @@
           decPart = decPart.slice(0, this.options.decimalDigits);
 
           if (val.charAt(cursorPos - 1) === this.options.decimalSeparator) {
-            originalVal = intPart + '.';
-            visualVal = this.formatNumber(originalVal, true);
+            originalVal = this.original.type === 'number' ? intPart : intPart + '.';
+            visualVal = this.formatNumber(intPart + '.', true);
           } else {
             originalVal = decPart.length > 0 ? intPart + '.' + decPart : intPart;
             const hasDecimal = val.includes(this.options.decimalSeparator);
@@ -295,7 +303,7 @@
           const newDecimalIndex = newVal.indexOf(this.options.decimalSeparator);
           if (newDecimalIndex !== -1) {
             this.visual.setSelectionRange(newDecimalIndex + 1, newDecimalIndex + 1);
-            this.original.dispatchEvent(new Event('input', { bubbles: true }));
+            this.triggerOriginalEvents();
             return;
           }
         }
@@ -313,23 +321,27 @@
         }
 
         this.visual.setSelectionRange(newPos, newPos);
-        this.original.dispatchEvent(new Event('input', { bubbles: true }));
+        this.triggerOriginalEvents();
       } else {
         this.original.value = '';
         this.visual.value = '';
-        this.original.dispatchEvent(new Event('input', { bubbles: true }));
+        this.triggerOriginalEvents();
       }
-
-      this.original.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
     syncFromOriginal() {
+      if (this.isInternalSync) return;
       const originalVal = this.original.value;
       const visualVal = this.visual.value;
+      const suffix = this.options.suffix;
+      const visualNoSuffix =
+        suffix && visualVal && visualVal.endsWith(suffix)
+          ? visualVal.slice(0, -suffix.length)
+          : visualVal;
       const endsWithDecimalOnly =
         this.options.decimalDigits > 0 &&
-        visualVal &&
-        visualVal.endsWith(this.options.decimalSeparator);
+        visualNoSuffix &&
+        visualNoSuffix.endsWith(this.options.decimalSeparator);
 
       if (!endsWithDecimalOnly) {
         this.visual.value = this.formatNumber(originalVal);
