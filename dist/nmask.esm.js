@@ -237,23 +237,6 @@ class Nmask {
 
     let cleanVal = this.cleanNumber(val);
 
-    // Handle empty input
-    if (!cleanVal && !val) {
-      this.original.value = '';
-      this.visual.value = '';
-      return;
-    }
-
-    // Special handling for prefix/suffix only
-    if (!cleanVal && (
-      (this.options.suffix && val === this.options.prefix + this.options.suffix) ||
-      (this.options.prefix && val === this.options.prefix)
-    )) {
-      this.visual.value = '';
-      this.original.value = '';
-      return;
-    }
-
     if (cleanVal || cleanVal === '0') {
       const parts = cleanVal.split('.');
       let intPart = parts[0].replace(/^(-)?0+(?=\d)/, '$1') || '0';

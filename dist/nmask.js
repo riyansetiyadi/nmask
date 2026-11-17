@@ -390,23 +390,6 @@
           const isTypingAfterDecimal = val.charAt(cursorPos - 2) === settings.decimalSeparator;
 
           let cleanVal = cleanNumber(val);
-          
-          // Handle empty input
-          if (!cleanVal && !val) {
-            $original.val("");
-            $(this).val("");
-            return;
-          }
-
-          // Special handling for empty input with only prefix/suffix
-          if (!cleanVal && (
-            (settings.suffix && val === settings.prefix + settings.suffix) ||
-            (settings.prefix && val === settings.prefix)
-          )) {
-            $(this).val("");
-            $original.val("");
-            return;
-          }
 
           if (cleanVal || cleanVal === "0") {
             let parts = cleanVal.split(".");
